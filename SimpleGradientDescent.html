@@ -24,7 +24,7 @@ h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:no
 
 <script>
 
-var zoom = 20;
+var zoom = 40;
 
 function f(x,y)
 {
@@ -74,11 +74,11 @@ function iterate()
             break;
         }
 
-        context.moveTo((a*zoom+300),(b*zoom+300));      
+        context.moveTo((a*zoom+300),(-b*zoom+300));      
         a=a-l*de*dgda(x,y);
         b=b-l*de*dgdb(x,y);
         c=c-l*de*dgdc(x,y);        
-        context.lineTo((a*zoom+300),(b*zoom+300));       
+        context.lineTo((a*zoom+300),(-b*zoom+300));       
     }
     context.closePath();
     context.stroke();
@@ -88,7 +88,8 @@ function iterate()
 
 function init()
 {
-    context= myCanvas.getContext('2d');
+    var myCanvas = document.getElementById("myCanvas");
+    context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,600);
 
     context.beginPath();
@@ -100,7 +101,36 @@ function init()
     context.closePath();
     context.stroke();
 
+    for(var i=-30;i<30;i++)
+    {
+        var x = (i*zoom+300);
+        var y = (-i*zoom+300);
+        context.font="15px ti92pluspc";
+        context.fillText(i,x,300);
+        context.fillText(i,300,y);
+    }
+/*
+    var canvasData = context.getImageData(0, 0, myCanvas.width, myCanvas.height);
+    for(var j=0;j<600;j++)
+    {
+        for(var i=0;i<600;i++)
+        {
+            var index = (i + j * myCanvas.width) * 4;
+            var a = (i-300)/zoom;
+            var b = (j-300)/zoom;
+            var d = g(a,b,1,1,1)-f(1,1);
+            if (d*d <3)
+            {
+                canvasData.data[index + 0] = 0;
+                canvasData.data[index + 1] = 255;
+                canvasData.data[index + 2] = 0;
+                canvasData.data[index + 3] = 128;
+            }
+        }
+    }
 
+    context.putImageData(canvasData, 0, 0);
+*/    
     setInterval(iterate,10); 
 }
 </script>
