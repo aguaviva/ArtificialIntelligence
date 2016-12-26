@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>HTML5 Simple Gradient Descent</title>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<script type="text/javascript"
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<style type="text/css">
+<!--
+body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+-->
+</style>
+</head>
+
+<script>
+
+var zoom = 20;
+
+function f(x,y)
+{
+    return 4*x+2*y+6;
+}
+
+
+var a=0;
+var b=0;
+var c=0;
+
+function g(a,b,c, x,y)
+{
+    return a*x+b*y+c;
+}
+
+// g(a,b,c) = ax+by+c
+function dgda(x,y) { return x; }
+function dgdb(x,y) { return y; }
+function dgdc(x,y) { return 1; }
+
+function iterate()
+{
+    
+    context.beginPath();
+    context.strokeStyle="#ff0000";
+
+    var l=.1;
+    for(var i=0;i<5;i++)
+    {
+        var x= Math.random();
+        var y= Math.random();
+        
+        t = f(x,y)
+        
+        // e = (g(a,b,c,x,y)-t)^2
+        
+        // de = 2*(g-t) * (dg/da, dg/db, dg/dc)          
+        de = 2*(g(a,b,c,x,y)-t);
+
+        // if g is close to t then restart
+        if (Math.abs(de)<.0001)
+        {
+            a= Math.random()*40-20;
+            b= Math.random()*40-20;
+            c= Math.random()*40-20;        
+            break;
+        }
+
+        context.moveTo((a*zoom+300),(b*zoom+300));      
+        a=a-l*de*dgda(x,y);
+        b=b-l*de*dgdb(x,y);
+        c=c-l*de*dgdc(x,y);        
+        context.lineTo((a*zoom+300),(b*zoom+300));       
+    }
+    context.closePath();
+    context.stroke();
+
+    //document.getElementById("text").innerHTML = "<br>e: "  + de + "<br>a: "  + a + "<br>b: " + b + "<br>c: " + c + "<br>";
+}
+
+function init()
+{
+    context= myCanvas.getContext('2d');
+    context.clearRect(0,0,600,600);
+
+    context.beginPath();
+    context.strokeStyle="#000000";
+    context.moveTo((-100*zoom+300),(0*zoom+300));      
+    context.lineTo((100*zoom+300),(0*zoom+300));       
+    context.moveTo((0*zoom+300),(-100*zoom+300));      
+    context.lineTo((0*zoom+300),(100*zoom+300));       
+    context.closePath();
+    context.stroke();
+
+
+    setInterval(iterate,10); 
+}
+</script>
+
+
+<body onload="init()">
+<h1>AI, learning using the Gradient Descent</h1>
+<div id="container">
+	
+<canvas id="myCanvas" width="600" height="600"></canvas>
+
+<div id="text"></div>
+
+<h2>Intro</h2>
+
+Let's say we have a system with 2 inputs, $x$ and $y$, that outputs a value according to the following mistery formula: 
+$$m(x,y)=4x+2y+6$$
+Let's say we don't know this formula, we can only know it's output given a $(x,y)$.<br>
+<br>
+Using 'trial and error', let's try to figure out how that formula looks like. For the shake of simplicity let's assume we know the formula has the following form:
+$$f(x,y)=ax+by+c$$    
+
+How would we go about?
+
+Using the mistery formula we can compute a valid result, for example: $m(4,3)=28$
+Since we are using trial and error we'd start by choosing some random values for $a$, $b$ and $c$, we'd apply our formula  $f(x,y)$ and then we'd see how close we are from the function $m$.
+<br><br>
+The 'how close' is given by computing the distance between the good result and ours. In this case this distance would be given by:
+
+$$E(a,b,c) = (f(x,y,a,b,c)-m(x,y))^2)$$
+<br><br>
+Notice we dont know the internals of $m$.
+<br><br>
+The question is, how does $E(a,b,c)$ change when I change $a$, $b$ and $c$?
+
+In maths, this is given by the derivative:
+
+$$dE(a,b,c) = \frac{\partial{E}}{\partial{a}}da + \frac{\partial{E}}{\partial{b}}db + \frac{\partial{E}}{\partial{c}}dc$$
+
+in out case, and using the chain rule:
+
+$$df(a,b,c) = 2f(a,b,c) (\frac{\partial{f}}{\partial{a}}, \frac{\partial{f}}{\partial{b}}, \frac{\partial{f}}{\partial{c}})$$
+
+
+Since the E funtion is a cuadratic function, we know it has a minimum. And more over the derivative is a vector that points toward this minimum. 
+
+So the algorithm is, we start at a random position, and from there lets move in small steps ($\lambda$) in the direction of the derivative:
+
+$$ (a',b',c') = (a,b,c) + \lambda dE(a,b,c)$$
+
+by repeating this over and over we'll end up reaching the minumum. This method is called the 'Gradient desncent'.
+
+This is the same mechanism used in a neural network, with the difference that the function $f$ is made of many other functions (called neurons).
+Each neuron has the following form:
+
+$$ f(x_i,w_i)=sig(\sum{w_ix_i})$$
+
+Where the x_i would be $x$ and $y$ in our sample, and $w_i$ woudl be $a$, $b$ and $c$. The $sig()$ is just a function that makes the results to be between %-1% and %+1%, dont 'worry about this right now.
+
+AS we knwo a neural network are many neurons conected with each other, matehmatically this is expressed this way:
+
+$$f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})$$
+
+So, once again the error is computed as before:
+$$E(a,b,c) = (f(x,y,a,b,c)-m(x,y))^2)$$
+and the derivative of the error would computed as before, but now our $a$ varibles are called $w_i$, so for a $w_hi$ we'd have that:
+
+$$\frac{\partial{f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})}}{w_{hi}}= \frac{\partial{f}}{\partial{g}}\frac{\partial{g}}{\partial{h}}\frac{\partial{i(x_i, w_{hi})}}{\partial{w_{hi}}}$$
+
+That is, thanks to the chain rule, the derivative of our full network can be expressed as the derivatives of the individual neurons. 
+
+And the $w_hi$ woudl be updated as before, yielding now the following:
+
+$$ w'_{hi} = w_{hi} + \lambda df$$
+  
+</br>
+</br>
+<h2>Contact/Questions:</h2>
+ &lt;my_github_account_username&gt;$@gmail.com$.
+</br>
+</br>
+</div>
+</body>
+</html>
