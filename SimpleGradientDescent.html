@@ -174,37 +174,44 @@ in out case, and using the chain rule:
 
 $$df(a,b,c) = 2f(a,b,c) (\frac{\partial{f}}{\partial{a}}, \frac{\partial{f}}{\partial{b}}, \frac{\partial{f}}{\partial{c}})$$
 
-
 Since the E funtion is a cuadratic function, we know it has a minimum. And more over the derivative is a vector that points toward this minimum. 
+<br><br>
+So the algorithm is, we start at a random position for $a$, $b$ and $c$, and then we move in small steps ($\lambda$) in the direction of the derivative:
 
-So the algorithm is, we start at a random position, and from there lets move in small steps ($\lambda$) in the direction of the derivative:
+$$ (a',b',c') = (a,b,c) - \lambda dE(a,b,c)$$
 
-$$ (a',b',c') = (a,b,c) + \lambda dE(a,b,c)$$
+by repeating this over and over we'll end up reaching the minumum. This method is called the 'Gradient descent'.
+<br><br>
+Oh and BTW our function $f(x,y,a,b,c)$, can be expressed:
 
-by repeating this over and over we'll end up reaching the minumum. This method is called the 'Gradient desncent'.
+$$ f(x_1,x_2,w_1,w_2,b) = x_1w_1 + x_2w_2 + b$$
 
-This is the same mechanism used in a neural network, with the difference that the function $f$ is made of many other functions (called neurons).
-Each neuron has the following form:
+hence:
+
+$$ f(x_i,w_i) = \sum{x_iw_i} + b$$
+
+and this is starting to shape up as a neuron. All we'd need to add is the sigmoid function to smoothly clamp the outputs into values from -1 to 1.
+<br><br>
 
 $$ f(x_i,w_i)=sig(\sum{w_ix_i})$$
 
-Where the x_i would be $x$ and $y$ in our sample, and $w_i$ woudl be $a$, $b$ and $c$. The $sig()$ is just a function that makes the results to be between %-1% and %+1%, dont 'worry about this right now.
-
-AS we knwo a neural network are many neurons conected with each other, matehmatically this is expressed this way:
+In a neural network the outputs of neurons are connected to the inputs of another neuron, this matehmatically is expressed this way:
 
 $$f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})$$
 
 So, once again the error is computed as before:
-$$E(a,b,c) = (f(x,y,a,b,c)-m(x,y))^2)$$
+$$E(a,b,c) = (f(...)-m(x,y))^2)$$
 and the derivative of the error would computed as before, but now our $a$ varibles are called $w_i$, so for a $w_hi$ we'd have that:
 
 $$\frac{\partial{f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})}}{w_{hi}}= \frac{\partial{f}}{\partial{g}}\frac{\partial{g}}{\partial{h}}\frac{\partial{i(x_i, w_{hi})}}{\partial{w_{hi}}}$$
 
 That is, thanks to the chain rule, the derivative of our full network can be expressed as the derivatives of the individual neurons. 
-
-And the $w_hi$ woudl be updated as before, yielding now the following:
+<br><br>
+And the $w_hi$ would be updated as before, yielding now the following:
 
 $$ w'_{hi} = w_{hi} + \lambda df$$
+  
+Congratulations, you are one step closer to understanding the full monty. 
   
 </br>
 </br>
