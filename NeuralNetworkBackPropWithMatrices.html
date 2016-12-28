@@ -127,12 +127,12 @@ function SubMat(m1, m2)
 
 function DerAct(x)
 {
-    return 1;
+    return x*(1-x);
 }
 
 function Act(x)
 {
-    return x;
+    return 1.0/(1+Math.exp(-x));
 }
 
 function funcMat(func, m )
@@ -184,32 +184,33 @@ var il = RandomMat(1,2);
 var wl_i1 = RandomMat(2,2);
 var wl_12 = RandomMat(2,2);
 
-il    = [ [1],[0] ];   //input
+il    = [ [ [1],[0] ], [ [4],[1] ], [ [5],[1] ] ];   //input
 wl_i1 = [ [1,2],[3,4] ];
 wl_12 = [ [5,6],[7,8] ];
-t     = [ [1],[0] ];   //target
+t     = [ [ [1],[0] ], [ [0],[1] ], [ [3],[1] ] ];   //target
 
 var iterations = 0;
 var oldFitness=1000;
 var curFitness=1000;
 function iterate()
 {
-    var learningRate = .001;
+    var learningRate = .1;
     var err;
     var fitness=100;
     
     iterations++;
     
-    for(var i=0;i<1;i++)
+    for(var j=0;j<100;j++)
+    for(var i=0;i<3;i++)
     {
         //forward pass
-        var o0 = il;//new RandomMat(1,1);
+        var o0 = il[i];//new RandomMat(1,1);
         var net1  = funcMat(Act, MulMat(wl_i1, o0));
         var o1   = MulMat(wl_12, net1)
         var net2   = funcMat(Act, o1);
         var o2   = MulMat(wl_12, net2)
         
-        err = SubMat(o2, t);
+        err = SubMat(o2, t[i]);
         
         //back propagate
         
