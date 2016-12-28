@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Neural netowrk back prop, with matrix fomulation</title>
+<script type="text/javascript"
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<style type="text/css">
+<!--
+body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+-->
+</style>
+</head>
+<script>
+
+function RandomMat(inp,neurons)
+{
+    var L = []
+    for(var i=0;i<neurons;i++)
+    {
+        L[i] = [];
+        for(var j=0;j<inp;j++)
+        {
+            L[i].push(Math.random());
+        }
+    }
+    return L;
+}
+
+function PrintMat(m)
+{
+    var str = "[";
+    for(var i=0;i<m.length;i++)
+    {
+        str += "[" + join(m[i][j],",") + "]";
+    }
+    str += "]\n";
+    return str;
+}
+
+function MulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m2[0].length;i++)        
+        {
+            var tmp=0;
+            for(var k=0;k<m1[i].length;k++)
+            {
+                tmp += (m1[j][k] * m2[k][i]);
+            }
+            O[j].push( tmp);
+        }
+    }
+    return O;  
+}
+
+
+function TransposeMat(m)
+{
+    var O = [];        
+    for(var j=0;j<m[0].length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m.length;i++)        
+        {
+            O[j][i] = m[i][j];
+        }
+    }
+    return O;
+}
+
+function AddMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] + m2[j][i];
+        }
+    }
+    return O;
+}
+
+function SimpleMulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] * m2[j][i];
+        }
+    }
+    return O;
+}
+
+
+function SubMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] - m2[j][i];
+        }
+    }
+    return O;
+}
+
+function DerAct(x)
+{
+    return 1;
+}
+
+function Act(x)
+{
+    return x;
+}
+
+function funcMat(func, m )
+{
+    var O = [];        
+    for(var j=0;j<m.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m[0].length;i++)        
+        {
+            O[j][i] = func(m[j][i]);
+        }
+    }
+    return O;
+}
+
+function UpdateWeights(m1,m2, learningRate)
+{
+    for(var i=0;i<m1.length;i++)
+    {
+        for(var j=0;j<m1[0].length;j++)
+        {
+            m1[i][j] += learningRate * m2[i][j];
+        }
+    }
+}
+
+//-------------------------------
+
+function GraphAxis()
+{
+    context.beginPath();
+    context.strokeStyle="#000000";    
+    context.moveTo(0,300-20); 
+    context.lineTo(600,300-20);
+    context.moveTo(20,0); 
+    context.lineTo(20,300);
+    context.closePath();
+    context.stroke(); 
+}
+
+function Graph()
+{
+}
+
+//-------------------------------
+
+var il = RandomMat(1,2);
+var wl_i1 = RandomMat(2,2);
+var wl_12 = RandomMat(2,2);
+
+il    = [ [1],[0] ];   //input
+wl_i1 = [ [1,2],[3,4] ];
+wl_12 = [ [5,6],[7,8] ];
+t     = [ [1],[0] ];   //target
+
+var iterations = 0;
+var oldFitness=1000;
+var curFitness=1000;
+function iterate()
+{
+    var learningRate = .001;
+    var err;
+    var fitness=100;
+    
+    iterations++;
+    
+    for(var i=0;i<1;i++)
+    {
+        //forward pass
+        var o0 = il;//new RandomMat(1,1);
+        var net1  = funcMat(Act, MulMat(wl_i1, o0));
+        var o1   = MulMat(wl_12, net1)
+        var net2   = funcMat(Act, o1);
+        var o2   = MulMat(wl_12, net2)
+        
+        err = SubMat(o2, t);
+        
+        //back propagate
+        
+        // outer layer
+        var sp2  =  SimpleMulMat(err,funcMat(DerAct, net2));      
+        var e2 = MulMat(sp2, TransposeMat(o1));
+        UpdateWeights(wl_12, e2, -learningRate);
+        
+        // inner layer
+        var sp1  =  SimpleMulMat(sp2, funcMat(DerAct, net1));      
+        var e1 = MulMat(sp1, TransposeMat(o0));
+        UpdateWeights(wl_i1, e1, -learningRate);        
+    }
+    
+    oldFitness = curFitness;    
+    curFitness = err[0]*err[0] + err[1]*err[1];
+
+    context.beginPath();
+    context.strokeStyle="#ff0000";    
+    context.moveTo((iterations-1)+20,300-oldFitness-20); 
+    context.lineTo((iterations)+20,300-curFitness-20);
+    context.closePath();
+    context.stroke();        
+    
+    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
+}
+
+function init()
+{
+    var myCanvas = document.getElementById("myCanvas");
+    context = myCanvas.getContext('2d');
+    context.clearRect(0,0,600,300);
+    GraphAxis();
+    setInterval(iterate,10); 
+}
+</script>
+
+
+<body onload="init()">
+<h1>Neural netowrk back prop, with matrix fomulation</h1>
+<div id="container">
+	
+<canvas id="myCanvas" width="600" height="300"></canvas>
+
+<div id="text"></div>
+
+<h2>Intro</h2>
+
+In this tutorial we are going to derive the matrix formualtion for the forward and the back propagation passes.
+
+Let's think about a 2x2 neural netork
+<pre>
+              F          H
+i1 o-------a--o-------e--o
+    \        / \        /
+     \      /   \      /
+      \    b     \    f
+       \  /       \  /          
+        \/         \/  
+        /\         /\                                   
+       /  \       /  \ 
+      /    c     /    g                               
+     /      \   /      \                                   
+    /        \ /        \                                       
+i2 o-------d--o-------h--o
+              G          I
+</pre>
+
+$$H = \sigma(net_H) =  \sigma(e\cdot F+f\cdot G)$$
+$$I = \sigma(net_I) =  \sigma(g\cdot F+h\cdot G)$$
+$$F = \sigma(net_F) =  \sigma(a\cdot i_1 + b\cdot i_2)$$
+$$G = \sigma(net_G) =  \sigma(c\cdot i_1 + d\cdot i_2)$$
+
+We are starting to see some matrices here...
+
+$$\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix} = \begin{pmatrix} e & f \\ g & h
+\end{pmatrix} \cdot \begin{pmatrix}F\\
+G\\
+\end{pmatrix}$$
+
+$$\begin{pmatrix}net_F\\
+net_G\\
+\end{pmatrix} = \begin{pmatrix} a & b \\ c & d
+\end{pmatrix} \cdot \begin{pmatrix}i_1\\
+i_2\\
+\end{pmatrix}$$
+
+being the outputs of the neurons then:
+
+$$\begin{pmatrix}H\\
+I\\
+\end{pmatrix} = \sigma \Bigg( \begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix} \Bigg)
+$$ 
+
+$$\begin{pmatrix}F\\
+G\\
+\end{pmatrix} = \sigma \Bigg( \begin{pmatrix}i_1\\
+i_2\\
+\end{pmatrix} \Bigg)
+$$ 
+
+And the full forward operation woudl be given by:
+ 
+$$\begin{pmatrix}H\\
+I\\
+\end{pmatrix} = \sigma \Bigg( \begin{pmatrix} e & f \\ g & h
+\end{pmatrix} \cdot \sigma \Bigg( \begin{pmatrix} a & b \\ c & d
+\end{pmatrix} \cdot \begin{pmatrix}i_1\\
+i_2\\
+\end{pmatrix} \Bigg) \Bigg)
+$$ 
+ 
+Now we want to see how $H$ and $I$ change when the weights $a ... b$ change. This is given by the derivative.<br>
+<br>
+For computing derivatives we'll be using the chain rule. We'll need some formulas:
+$$ \frac{d\sigma(f(...))}{df(...)} = \sigma'(f(...)) \cdot f'(...)'$$
+
+Starting from the output we immediatelly see a jacobian:
+
+$$\begin{pmatrix}\frac{\partial{H}}{\partial{e}} & \frac{\partial{H}}{\partial{f}} \\ 
+\frac{\partial{I}}{\partial{g}} & \frac{\partial{I}}{\partial{h}}\\
+\end{pmatrix} = \sigma'(\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix}) \begin{pmatrix} F & G \\ F & G\end{pmatrix} = \sigma'(\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix}) \cdot \begin{pmatrix} F  & G \end{pmatrix}$$
+
+Note that the multiplication is only a matrix multiplication when thre is a $\cdot$, otherwise it's a component to component mul<br>
+<br>
+
+Let see how the outputs change with the weights $a .. d$:
+
+$$\begin{pmatrix}\frac{\partial{H}}{\partial{a}} & \frac{\partial{H}}{\partial{b}} \\ 
+\frac{\partial{I}}{\partial{c}} & \frac{\partial{I}}{\partial{d}}\\
+\end{pmatrix} = \sigma'(\begin{pmatrix}net_H\\
+net_I \end{pmatrix}) \sigma'(\begin{pmatrix}net_F\\
+net_G \end{pmatrix})  \begin{pmatrix} i_1 & i_2 \\ i_1 & i_2\end{pmatrix} = \sigma'(\begin{pmatrix}net_H\\
+net_I \end{pmatrix}) \sigma'(\begin{pmatrix}net_F\\
+net_G \end{pmatrix}) \cdot \begin{pmatrix} i_1 & i_2 \end{pmatrix}$$
+
+Now we have all the ingredients to train our network:
+
+First we need a forward pass, we take the output and we compute how far are we from the target result $t_1 and t_2$:
+
+$$Error = (H-t_1)^2 + (I-t_2)^2$$
+
+And it's derivative is:
+
+$$d(Error) = 2(H-t_1)dH + 2(I-t_2)dI$$
+
+Using results from before:
+
+$$ \begin{pmatrix}\frac{\partial{E}}{\partial{e}} & \frac{\partial{E}}{\partial{f}} \\ 
+\frac{\partial{E}}{\partial{g}} & \frac{\partial{E}}{\partial{h}}\\
+\end{pmatrix} = 2(H-t_1)  \sigma'(\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix}) \cdot \begin{pmatrix} F  & G \end{pmatrix} $$
+
+and
+
+$$ \begin{pmatrix}\frac{\partial{E}}{\partial{a}} & \frac{\partial{E}}{\partial{b}} \\ 
+\frac{\partial{E}}{\partial{c}} & \frac{\partial{E}}{\partial{d}}\\
+\end{pmatrix} = 2(H-t_1)  \sigma'(\begin{pmatrix}net_H\\
+net_I \end{pmatrix}) \sigma'(\begin{pmatrix}net_F\\
+net_G \end{pmatrix}) \cdot \begin{pmatrix} i_1 & i_2 \end{pmatrix} $$
+
+ 
+</br>
+</br>
+<h2>Contact/Questions:</h2>
+ &lt;my_github_account_username&gt;$@gmail.com$.
+</br>
+</br>
+</div>
+</body>
+</html>
