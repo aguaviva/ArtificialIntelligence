@@ -75,13 +75,37 @@ function dgda(x,y) { return x; }
 function dgdb(x,y) { return y; }
 function dgdc(x,y) { return 1; }
 
+
+function DrawSpace(context)
+{
+    var canvasData = context.getImageData(0, 0, 600, 600);
+    
+    for(var y=0;y<600;y++)
+    {
+        for(var x=0;x<600;x++)
+        {
+            var index = (x + y * 600) * 4;
+
+            var xx = (x-300)/zoom
+            var yy = (300-y)/zoom
+            var v = g(a,b,c, xx,yy)*255
+
+            canvasData.data[index + 0] = v;
+            canvasData.data[index + 1] = 1-v;
+            canvasData.data[index + 2] = 1;
+            canvasData.data[index + 3] = 128;
+        }
+    }
+    context.putImageData(canvasData, 0, 0);    
+}
+
 function iterate()
 {
     
     context.beginPath();
     context.strokeStyle="#ff0000";
 
-    var l=.1;
+    var l=.01;
     for(var i=0;i<5;i++)
     {
         var x = (2*Math.random()-1)*10;
@@ -114,27 +138,9 @@ function iterate()
     context.closePath();
     context.stroke();        
     
-    var canvasData = context.getImageData(0, 0, 600, 600);
+    DrawSpace(context);
     
-    for(var y=0;y<600;y++)
-    {
-        for(var x=0;x<600;x++)
-        {
-            var index = (x + y * 600) * 4;
-
-            xx = (x-300)/zoom
-            yy = (300-y)/zoom
-            v = g(a,b,c, xx,yy)*100
-
-            canvasData.data[index + 0] = v;
-            canvasData.data[index + 1] = 1-v;
-            canvasData.data[index + 2] = 1;
-            canvasData.data[index + 3] = 128;
-        }
-    }
-    context.putImageData(canvasData, 0, 0);    
-
-    DrawAxis(context)
+    DrawAxis(context)        
 
     context.strokeStyle="#ff0000";
 
@@ -160,7 +166,7 @@ function init()
 
 
 <body onload="init()">
-<h1>AI, learning using the Gradient Descent</h1>
+<h1>Simple Linear regression</h1>
 <div id="container">
 	
 <canvas id="myCanvas" width="600" height="600"></canvas>

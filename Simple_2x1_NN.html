@@ -24,25 +24,83 @@ h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:no
 
 <script>
 
-var zoom = 40;
+var zoom = 600*.9;
+var center_x = 30;
+var center_y = 600-30;
 
-function f(x,y)
+var axis_a;
+var axis_b;
+
+var points = []
+var target = []
+
+function F(x,y)
 {
-    return (1*x-1*y+.5)>0?1:0;  // x+.5 = y
-    // -10 , -9.5
-    //  10 , 10.5
+    return (axis_a*x-y+axis_b)>0?1:0;
+}
+
+function randomF()
+{
+    var px = Math.random()
+    var py = Math.random()
+
+    axis_a = (py-.5)/(px-.5);
+    axis_b = (1-axis_a)*.5;
+    
+    points = []
+    target = []
+    
+    for(var i=0;i<20;i++)
+    {
+        var x = Math.random()
+        var y = Math.random()
+        
+        points.push([x, y])
+        target.push(F(x, y))
+    }
+}
+
+function DrawF(context)
+{
+    x1 = -10; y1 = axis_a*x1+axis_b
+    x2 =  10; y2 = axis_a*x2+axis_b
+    DrawLine(context, x1,y1,x2,y2)
+}
+
+function DrawPoints(context, radius)
+{
+
+    for(var i=0;i<points.length;i++)
+    {
+        var x = points[i][0];
+        var y = points[i][1];
+        if (target[i]==0)
+        {
+            context.beginPath();
+            context.moveTo((x*zoom+center_x-radius),(-y*zoom+center_y));      
+            context.lineTo((x*zoom+center_x+radius),(-y*zoom+center_y));           
+            context.moveTo((x*zoom+center_x),(-y*zoom+center_y-radius));      
+            context.lineTo((x*zoom+center_x),(-y*zoom+center_y+radius));           
+            context.closePath();
+            context.stroke();
+        }
+        else
+        {
+            context.beginPath();
+            context.arc((x*zoom+center_x),(-y*zoom+center_y), radius, 0 ,  2 * Math.PI);
+            context.stroke();
+        }
+    }
 }
 
 
 function Act(x)
 {
-    //return x;//
-    return 1.0/(1.0+Math.exp(-x));
+    return 1.0/(1.0+Math.exp(-5*x));
 }
 
 function DerAct(x)
 {
-    //return 1;
     return Act(x)*(1-Act(x));
 }
 
@@ -50,28 +108,26 @@ function DrawAxis(context)
 {
     context.beginPath();
     context.strokeStyle="#000000";
-    context.moveTo((-100*zoom+300),(0*zoom+300));      
-    context.lineTo((100*zoom+300),(0*zoom+300));       
-    context.moveTo((0*zoom+300),(-100*zoom+300));      
-    context.lineTo((0*zoom+300),(100*zoom+300));       
+    context.moveTo((-100*zoom+center_x),(0*zoom+center_y));      
+    context.lineTo((100*zoom+center_x),(0*zoom+center_y));       
+    context.moveTo((0*zoom+center_x),(-100*zoom+center_y));      
+    context.lineTo((0*zoom+center_x),(100*zoom+center_y));       
     context.closePath();
     context.stroke();
 
     for(var i=-30;i<30;i++)
     {
-        var x = (i*zoom+300);
-        var y = (-i*zoom+300);
         context.font="15px ti92pluspc";
-        context.fillText(i,x,300);
-        context.fillText(i,300,y);
+        context.fillText(i,center_x + i*zoom,center_y);
+        context.fillText(i,center_x, - i*zoom + center_y);
     }
 }
 
 function DrawLine(context, x1,y1,x2,y2)
 {
     context.beginPath();
-    context.moveTo((x1*zoom+300),(-y1*zoom+300));      
-    context.lineTo((x2*zoom+300),(-y2*zoom+300));           
+    context.moveTo((x1*zoom+center_x),(-y1*zoom+center_y));      
+    context.lineTo((x2*zoom+center_x),(-y2*zoom+center_y));           
     context.closePath();
     context.stroke();
 }
@@ -90,41 +146,54 @@ var w1=0;
 var w2=0;
 var w3=0;
 
+var epoch = 0;
+
+
 function iterate()
 {    
     context.beginPath();
     context.strokeStyle="#ff0000";
 
-    var l=.00001;
-    for(var i=0;i<1;i++)
+    var l=.1;
+    for(var i=0;i<100;i++)
     {
-        var i1 = Math.random();
-        var i2 = Math.random();
+        epoch++;
 
-        //compute real value
-        t = f(i1, i2)
-        
-        // e = ( s(net(w1,w2,i1,i2))-t)^2
-        n = net(w1,w2,w3, i1,i2)
-        o = Act(n);
-        
-        // de = 2*(s(net)-t) * s'(net) * (dg/da, dg/db)          
-        de = 2*(o-t) * DerAct(n);
+        var totalErr = 0;
+    
+        for(var pindex=0;pindex<points.length;pindex++)
+        {   
+            var p = points[pindex];
+            var i1 = p[0];
+            var i2 = p[1];
 
+            //compute real value
+            t = target[pindex]
+            
+            // e = ( s(net(w1,w2,i1,i2))-t)^2
+            n = net(w1,w2,w3, i1,i2)
+            o = Act(n);
+            
+            totalErr += (o-t)*(o-t);
+            
+            // de = 2*(s(net)-t) * s'(net) * (dg/da, dg/db)          
+            de = 2*(o-t) * DerAct(n);
+
+            w1+=-l*de*dnetdw1(i1,i2);
+            w2+=-l*de*dnetdw2(i1,i2);
+            w3+=-l*de*dnetdw3(i1,i2);
+        }
+        
         // if g is close to t then restart
-        if (Math.abs(de)<.0001)
+        if (Math.abs(totalErr)<.1)
         {
-            w1= Math.random()*40-20;
-            w2= Math.random()*40-20;
-            w3= Math.random()*40-20;        
+            epoch = 0;
+            randomF();
+            w1 = 2*Math.random()-1;
+            w2 = 2*Math.random()-1;
+            w3 = 2*Math.random()-1;
             break;
         }
-
-        context.moveTo((w1*zoom+300),(-w2*zoom+300));      
-        w1+=-l*de*dnetdw1(i1,i2);
-        w2+=-l*de*dnetdw2(i1,i2);
-        w3+=-l*de*dnetdw3(i1,i2);
-        context.lineTo((w1*zoom+300),(-w2*zoom+300));       
     }
     context.closePath();
     context.stroke();        
@@ -137,32 +206,29 @@ function iterate()
         {
             var index = (x + y * 600) * 4;
 
-            xx = (x-300)/zoom
-            yy = (300-y)/zoom
-            v = Act(net(w1,w2,w3, xx,yy))*2550000000
+            xx = (x-center_x)/zoom
+            yy = (center_y-y)/zoom
+            v = (Act(net(w1,w2,w3, xx,yy)))>.5?255:0;
 
             canvasData.data[index + 0] = v;
-            canvasData.data[index + 1] = 1-v;
-            canvasData.data[index + 2] = 1;
+            canvasData.data[index + 1] = 255-v;
+            canvasData.data[index + 2] = 0;
             canvasData.data[index + 3] = 128;
         }
     }
     context.putImageData(canvasData, 0, 0);    
 
+    context.strokeStyle="#000000";    
+
     DrawAxis(context)
+    
+    DrawPoints(context,10);
 
-    context.strokeStyle="#ff0000";
-
-    // -10 , 9.5
-    //  10 , 10.5
+    //draw the plane used to generate the points
+    //DrawF(context);
 
 
-    x1 = -10; y1 = -9.5
-    x2 = 10; y2 = 10.5
-    DrawLine(context, x1,y1,x2,y2)
-
-    document.getElementById("text").innerHTML = "<br>e: "  + Math.abs(de) + "<br>a: "  + w1 + "<br>b: " + w2 + "<br>c: " + w3 + "<br>";
-    document.getElementById("text").innerHTML += "<br>a: "  + 4/100 + "<br>b: "  + 2/100 + "<br>c: " + 6/100 + "<br>";
+    document.getElementById("text").innerHTML = "<br>Epoch:"+ epoch + "<br>Error: "  + Math.abs(totalErr) + "<br>Coeff a: "  + w1 + "<br>Coeff b: " + w2 + "<br>Coeff c: " + w3 + "<br>";
     
 }
 
@@ -172,7 +238,8 @@ function init()
     context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,600);
 
-   
+    randomF();
+
     
     setInterval(iterate,10); 
 }
@@ -180,7 +247,7 @@ function init()
 
 
 <body onload="init()">
-<h1>AI, 2x1 NN learning a plane</h1>
+<h1>AI, 2x1 Classifier</h1>
 <div id="container">
 	
 <canvas id="myCanvas" width="600" height="600"></canvas>
@@ -189,72 +256,7 @@ function init()
 
 <h2>Intro</h2>
 
-Let's say we have a system with 2 inputs, $x$ and $y$, that outputs a value according to the following mistery formula: 
-$$m(x,y)=4x+2y+6$$
-Let's say we don't know this formula, we can only know it's output given a $(x,y)$.<br>
-<br>
-Using 'trial and error', let's try to figure out how that formula looks like. For the shake of simplicity let's assume we know the formula has the following form:
-$$f(x,y)=w_1x+w_2y+w_b$$    
-
-How would we go about?
-
-Using the mistery formula we can compute a valid result, for example: $m(4,3)=28$
-Since we are using trial and error we'd start by choosing some random values for $a$, $b$ and $c$, we'd apply our formula  $f(x,y)$ and then we'd see how close we are from the function $m$.
-<br><br>
-The 'how close' is given by computing the distance between the good result and ours. In this case this distance would be given by:
-
-$$E(a,b,c) = (f(x,y,a,b,c)-m(x,y))^2)$$
-<br><br>
-Notice we dont know the internals of $m$.
-<br><br>
-The question is, how does $E(a,b,c)$ change when I change $a$, $b$ and $c$?
-
-In maths, this is given by the derivative:
-
-$$dE(a,b,c) = \frac{\partial{E}}{\partial{a}}da + \frac{\partial{E}}{\partial{b}}db + \frac{\partial{E}}{\partial{c}}dc$$
-
-in out case, and using the chain rule:
-
-$$df(a,b,c) = 2f(a,b,c) (\frac{\partial{f}}{\partial{a}}, \frac{\partial{f}}{\partial{b}}, \frac{\partial{f}}{\partial{c}})$$
-
-Since the E funtion is a cuadratic function, we know it has a minimum. And more over the derivative is a vector that points toward this minimum. 
-<br><br>
-So the algorithm is, we start at a random position for $a$, $b$ and $c$, and then we move in small steps ($\lambda$) in the direction of the derivative:
-
-$$ (a',b',c') = (a,b,c) - \lambda dE(a,b,c)$$
-
-by repeating this over and over we'll end up reaching the minumum. This method is called the 'Gradient descent'.
-<br><br>
-Oh and BTW our function $f(x,y,a,b,c)$, can be expressed:
-
-$$ f(x_1,x_2,w_1,w_2,b) = x_1w_1 + x_2w_2 + b$$
-
-hence:
-
-$$ f(x_i,w_i) = \sum{x_iw_i} + b$$
-
-and this is starting to shape up as a neuron. All we'd need to add is the sigmoid function to smoothly clamp the outputs into values from -1 to 1.
-<br><br>
-
-$$ f(x_i,w_i)=sig(\sum{w_ix_i})$$
-
-In a neural network the outputs of neurons are connected to the inputs of another neuron, this matehmatically is expressed this way:
-
-$$f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})$$
-
-So, once again the error is computed as before:
-$$E(a,b,c) = (f(...)-m(x,y))^2)$$
-and the derivative of the error would computed as before, but now our $a$ varibles are called $w_i$, so for a $w_hi$ we'd have that:
-
-$$\frac{\partial{f(g(h(x_i, w_{hi}), w_{gi}), w_{fi})}}{w_{hi}}= \frac{\partial{f}}{\partial{g}}\frac{\partial{g}}{\partial{h}}\frac{\partial{i(x_i, w_{hi})}}{\partial{w_{hi}}}$$
-
-That is, thanks to the chain rule, the derivative of our full network can be expressed as the derivatives of the individual neurons. 
-<br><br>
-And the $w_hi$ would be updated as before, yielding now the following:
-
-$$ w'_{hi} = w_{hi} + \lambda df$$
-  
-Congratulations, you are one step closer to understanding the full monty. 
+This a demo classifies 2 types of points. The points can be separated by a plane.  We are training a neuron to find the plane that divides the set.
   
 </br>
 </br>
