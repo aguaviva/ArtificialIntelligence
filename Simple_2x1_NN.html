@@ -28,19 +28,19 @@ var zoom = 40;
 
 function f(x,y)
 {
-    return (4*x+2*y+6);
+    return (4*x+2*y+6)/100;
 }
 
 
 function Act(x)
 {
-    return x;//
+    //return x;//
     return 1.0/(1.0+Math.exp(-x));
 }
 
 function DerAct(x)
 {
-    return 1;
+    //return 1;
     return Act(x)*(1-Act(x));
 }
 
