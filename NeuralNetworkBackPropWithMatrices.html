@@ -187,7 +187,7 @@ var wl_12 = RandomMat(2,2);
 il    = [ [ [1],[0] ], [ [4],[1] ], [ [5],[1] ] ];   //input
 wl_i1 = [ [1,2],[3,4] ];
 wl_12 = [ [5,6],[7,8] ];
-t     = [ [ [1],[0] ], [ [0],[1] ], [ [3],[1] ] ];   //target
+t     = [ [ [1],[0] ], [ [0],[1] ], [ [3],[8] ] ];   //target
 
 var iterations = 0;
 var oldFitness=1000;
@@ -201,7 +201,7 @@ function iterate()
     iterations++;
     
     for(var j=0;j<100;j++)
-    for(var i=0;i<3;i++)
+    for(var i=0;i<2;i++)
     {
         //forward pass
         var o0 = il[i];//new RandomMat(1,1);
@@ -230,8 +230,8 @@ function iterate()
 
     context.beginPath();
     context.strokeStyle="#ff0000";    
-    context.moveTo((iterations-1)+20,300-oldFitness-20); 
-    context.lineTo((iterations)+20,300-curFitness-20);
+    context.moveTo((iterations-1)/20+20,300-oldFitness-20); 
+    context.lineTo((iterations)/20+20,300-curFitness-20);
     context.closePath();
     context.stroke();        
     
