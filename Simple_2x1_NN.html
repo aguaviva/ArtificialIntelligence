@@ -28,7 +28,7 @@ var zoom = 40;
 
 function f(x,y)
 {
-    return (1*x-1*y+.5);  // x+.5 = y
+    return (1*x-1*y+.5)>0?1:0;  // x+.5 = y
     // -10 , -9.5
     //  10 , 10.5
 }
@@ -95,7 +95,7 @@ function iterate()
     context.beginPath();
     context.strokeStyle="#ff0000";
 
-    var l=.001;
+    var l=.00001;
     for(var i=0;i<1;i++)
     {
         var i1 = Math.random();
@@ -161,7 +161,7 @@ function iterate()
     x2 = 10; y2 = 10.5
     DrawLine(context, x1,y1,x2,y2)
 
-    document.getElementById("text").innerHTML = "<br>e: "  + de + "<br>a: "  + w1 + "<br>b: " + w2 + "<br>c: " + w3 + "<br>";
+    document.getElementById("text").innerHTML = "<br>e: "  + Math.abs(de) + "<br>a: "  + w1 + "<br>b: " + w2 + "<br>c: " + w3 + "<br>";
     document.getElementById("text").innerHTML += "<br>a: "  + 4/100 + "<br>b: "  + 2/100 + "<br>c: " + 6/100 + "<br>";
     
 }
