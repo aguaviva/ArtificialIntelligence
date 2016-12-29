@@ -4,8 +4,8 @@ Experimenting with AI (Just some notes for me and my friends regarding AI.)
 
 ### Demos:
 1. [Simple Gradient Descent](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/SimpleGradientDescent.html), 
-1. [Neural Netowrk with matrix formualtion](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatrices.html), 
-
+2. [Simple_2x1_NN.html] Same as 1 but using a 2x1 NN 
+3. [Neural Network with matrix formualtion, solving a xor](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatrices.html), 
 
 ### To do:
 1. Learn more

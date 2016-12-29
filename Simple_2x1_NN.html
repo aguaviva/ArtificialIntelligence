@@ -28,12 +28,21 @@ var zoom = 40;
 
 function f(x,y)
 {
-    return 4*x+2*y+6;
+    return (4*x+2*y+6);
 }
 
-var a=0;
-var b=0;
-var c=0;
+
+function Act(x)
+{
+    return x;//
+    return 1.0/(1.0+Math.exp(-x));
+}
+
+function DerAct(x)
+{
+    return 1;
+    return Act(x)*(1-Act(x));
+}
 
 function DrawAxis(context)
 {
@@ -65,51 +74,55 @@ function DrawLine(context, x1,y1,x2,y2)
     context.stroke();
 }
 
-function g(a,b, c, x,y)
+function net(w1,w2, w3, i1,i2)
 {
-    return a*x+b*y+c;
+    return w1*i1+w2*i2+w3;
 }
 
 // g(a,b,c) = ax+by+c
-function dgda(x,y) { return x; }
-function dgdb(x,y) { return y; }
-function dgdc(x,y) { return 1; }
+function dnetdw1(x,y) { return x; }
+function dnetdw2(x,y) { return y; }
+function dnetdw3(x,y) { return 1; }
+
+var w1=0;
+var w2=0;
+var w3=0;
 
 function iterate()
-{
-    
+{    
     context.beginPath();
     context.strokeStyle="#ff0000";
 
     var l=.1;
-    for(var i=0;i<5;i++)
+    for(var i=0;i<1;i++)
     {
-        var x = Math.random();
-        var y = Math.random();
+        var i1 = Math.random();
+        var i2 = Math.random();
 
         //compute real value
-        t = f(x, y)
+        t = f(i1, i2)
         
-        // e = ( s(net(a,b,x,y))-t)^2
-        o = g(a,b,c, x,y)
+        // e = ( s(net(w1,w2,i1,i2))-t)^2
+        n = net(w1,w2,w3, i1,i2)
+        o = Act(n);
         
-        // de = 2*(o -t) * (dg/da, dg/db)          
-        de = 2*(o-t);
+        // de = 2*(s(net)-t) * s'(net) * (dg/da, dg/db)          
+        de = 2*(o-t) * DerAct(n);
 
         // if g is close to t then restart
         if (Math.abs(de)<.0001)
         {
-            a= Math.random()*40-20;
-            b= Math.random()*40-20;
-            c= Math.random()*40-20;        
+            w1= Math.random()*40-20;
+            w2= Math.random()*40-20;
+            w3= Math.random()*40-20;        
             break;
         }
 
-        context.moveTo((a*zoom+300),(-b*zoom+300));      
-        a+=-l*de*dgda(x,y);
-        b+=-l*de*dgdb(x,y);
-        c+=-l*de*dgdc(x,y);
-        context.lineTo((a*zoom+300),(-b*zoom+300));       
+        context.moveTo((w1*zoom+300),(-w2*zoom+300));      
+        w1+=-l*de*dnetdw1(i1,i2);
+        w2+=-l*de*dnetdw2(i1,i2);
+        w3+=-l*de*dnetdw3(i1,i2);
+        context.lineTo((w1*zoom+300),(-w2*zoom+300));       
     }
     context.closePath();
     context.stroke();        
@@ -124,7 +137,7 @@ function iterate()
 
             xx = (x-300)/zoom
             yy = (300-y)/zoom
-            v = g(a,b,c, xx,yy)*100
+            v = Act(net(w1,w2,w3, xx,yy))*2550000000
 
             canvasData.data[index + 0] = v;
             canvasData.data[index + 1] = 1-v;
@@ -142,8 +155,7 @@ function iterate()
     x2 = 10; y2 = (-40-6)/2
     DrawLine(context, x1,y1,x2,y2)
 
-
-    document.getElementById("text").innerHTML = "<br>e: "  + de + "<br>a: "  + a + "<br>b: " + b + "<br>c: " + c + "<br>";
+    document.getElementById("text").innerHTML = "<br>e: "  + de + "<br>a: "  + w1 + "<br>b: " + w2 + "<br>c: " + w3 + "<br>";
 }
 
 function init()
@@ -160,7 +172,7 @@ function init()
 
 
 <body onload="init()">
-<h1>AI, learning using the Gradient Descent</h1>
+<h1>AI, 2x1 NN learning a plane</h1>
 <div id="container">
 	
 <canvas id="myCanvas" width="600" height="600"></canvas>
@@ -174,7 +186,7 @@ $$m(x,y)=4x+2y+6$$
 Let's say we don't know this formula, we can only know it's output given a $(x,y)$.<br>
 <br>
 Using 'trial and error', let's try to figure out how that formula looks like. For the shake of simplicity let's assume we know the formula has the following form:
-$$f(x,y)=ax+by+c$$    
+$$f(x,y)=w_1x+w_2y+w_b$$    
 
 How would we go about?
 
