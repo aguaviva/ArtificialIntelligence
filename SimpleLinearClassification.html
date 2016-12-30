@@ -25,46 +25,72 @@ h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:no
 
 //-----------------------simple graphing code
 
-var zoom = 600*.9;
-var center_x = 30;
-var center_y = 600-30;
-
-function ViewportX(x) { return (x*zoom+center_x); }
-function ViewportY(y) { return (-y*zoom+center_y); }
-function InvViewportX(vx) { return ((vx-center_x)/zoom); }
-function InvViewportY(vy) { return (-(vy-center_y)/zoom); }
-
-function moveTo(context, x,y) { context.moveTo(ViewportX(x),ViewportY(y)); }
-function lineTo(context, x,y) { context.lineTo(ViewportX(x),ViewportY(y)); }
-function fillText(context, str, x,y ) { context.fillText(str,ViewportX(x),ViewportY(y)); }
-
-function DrawAxis(context)
+function Graph(context, center_x, center_y, zoom)
 {
-    context.beginPath();
-    context.strokeStyle="#000000";
-    moveTo(context, -100,0);      
-    lineTo(context,  100,0);      
-    moveTo(context, 0, -100);      
-    lineTo(context, 0, 100);      
-    context.closePath();
-    context.stroke();
+    this.context = context;
+    this.center_x = center_x;
+    this.center_y = center_y;
+    this.zoom = zoom;
 
-    for(var i=-30;i<30;i++)
+    this.ViewportX = function(x) { return (x*this.zoom + this.center_x); }
+    this.ViewportY = function(y) { return (-y*this.zoom + this.center_y); }
+    this.InvViewportX = function(vx) { return ((vx - this.center_x)/this.zoom); }
+    this.InvViewportY = function(vy) { return (-(vy - this.center_y)/this.zoom); }
+
+    this.moveTo = function(x,y) { this.context.moveTo(this.ViewportX(x),this.ViewportY(y)); }
+    this.lineTo = function(x,y) { this.context.lineTo(this.ViewportX(x),this.ViewportY(y)); }
+    this.fillText = function (str, x,y ) { this.context.fillText(str,this.ViewportX(x),this.ViewportY(y)); }
+
+    this.DrawAxis = function ()
     {
-        context.font="15px ti92pluspc";
-        fillText(context, i,i,0);
-        fillText(context, i,0,i);
+        this.context.beginPath();
+        this.context.strokeStyle="#000000";
+        this.moveTo( -100,0);      
+        this.lineTo( 100,0);      
+        this.moveTo( 0, -100);      
+        this.lineTo( 0, 100);      
+        this.context.closePath();
+        this.context.stroke();
+
+        for(var i=-30;i<30;i++)
+        {
+            this.context.font="15px ti92pluspc";
+            this.fillText(i,i,0);
+            this.fillText(i,0,i);
+        }
     }
+
+    this.DrawLine = function (x1,y1,x2,y2)
+    {
+        this.context.beginPath();
+        this.moveTo(x1,y1);      
+        this.lineTo(x2,y2);      
+        this.context.closePath();
+        this.context.stroke();
+    }
+    
+    this.DrawPlus = function (x,y,radius)
+    {
+        this.context.beginPath();
+        this.context.moveTo(this.ViewportX(x) - radius, this.ViewportY(y));      
+        this.context.lineTo(this.ViewportX(x) + radius, this.ViewportY(y));           
+        this.context.moveTo(this.ViewportX(x), this.ViewportY(y) - radius);      
+        this.context.lineTo(this.ViewportX(x), this.ViewportY(y) + radius);           
+        this.context.closePath();
+        this.context.stroke();
+    }
+
+    this.DrawCircle = function (x,y,radius)
+    {
+        this.context.beginPath();
+        this.context.arc(this.ViewportX(x), this.ViewportY(y), radius, 0 ,  2 * Math.PI);
+        this.context.stroke();
+    }
+
+
 }
 
-function DrawLine(context, x1,y1,x2,y2)
-{
-    context.beginPath();
-    moveTo(context, x1,y1);      
-    lineTo(context, x2,y2);      
-    context.closePath();
-    context.stroke();
-}
+var gfx;
 
 //----------------------Point distribution generation and drawing
 
@@ -99,17 +125,17 @@ function GenerateDataSet(func)
     {
         var x = Math.random()
         var y = Math.random()
-        
+                
         points.push([x, y])
         target.push(func(x, y))
     }
 }
 
-function DrawF(context)
+function DrawF()
 {
     x1 = -10; y1 = axis_a*x1+axis_b
     x2 =  10; y2 = axis_a*x2+axis_b
-    DrawLine(context, x1,y1,x2,y2)
+    gfx.DrawLine( x1,y1,x2,y2)
 }
 
 function DrawPoints(context, radius)
@@ -120,19 +146,11 @@ function DrawPoints(context, radius)
         var y = points[i][1];
         if (target[i]==0)
         {
-            context.beginPath();
-            context.moveTo((ViewportX(x) - radius), ViewportX(y));      
-            context.lineTo((ViewportX(x) + radius), ViewportX(y));           
-            context.moveTo(ViewportX(x), ViewportX(y) - radius);      
-            context.lineTo(ViewportX(x), ViewportX(y) + radius);           
-            context.closePath();
-            context.stroke();
+            gfx.DrawPlus(x,y,radius);
         }
         else
         {
-            context.beginPath();
-            context.arc(ViewportX(x), ViewportX(y), radius, 0 ,  2 * Math.PI);
-            context.stroke();
+            gfx.DrawCircle(x,y,radius);
         }
     }
 }
@@ -149,23 +167,23 @@ function DerAct(x)
     return Act(x)*(1-Act(x));
 }
 
+var w1=0;
+var w2=0;
+var w3=0;
+
 function net(w1,w2, w3, i1,i2)
 {
     return w1*i1+w2*i2+w3;
 }
 
-// g(a,b,c) = ax+by+c
 function dnetdw1(x,y) { return x; }
 function dnetdw2(x,y) { return y; }
 function dnetdw3(x,y) { return 1; }
 
-var w1=0;
-var w2=0;
-var w3=0;
 
-function DrawDecisionBoundary()
+function DrawDecisionBoundary(gfx)
 {    
-    var canvasData = context.getImageData(0, 0, 600, 600);
+    var canvasData = gfx.context.getImageData(0, 0, 600, 600);
     
     for(var y=0;y<600;y++)
     {
@@ -173,18 +191,20 @@ function DrawDecisionBoundary()
         {
             var index = (x + y * 600) * 4;
            
-            xx = InvViewportX(x);
-            yy = InvViewportX(y);
+            var xx = gfx.InvViewportX(x);
+            var yy = gfx.InvViewportY(y);
             
-            v = (Act(net(w1,w2,w3, xx,yy)))>.5?255:0;
-
+            var res = Act(net(w1,w2,w3, xx,yy));
+            
+            var v = res>.5?255:0;
+            
             canvasData.data[index + 0] = v;
             canvasData.data[index + 1] = 255-v;
             canvasData.data[index + 2] = 0;
             canvasData.data[index + 3] = 128;
         }
     }
-    context.putImageData(canvasData, 0, 0);    
+    gfx.context.putImageData(canvasData, 0, 0);    
 }
 
 //------------------------learning loop
@@ -193,8 +213,6 @@ var epoch = 0;
 
 function iterate()
 {    
-    context.beginPath();
-    context.strokeStyle="#ff0000";
 
     var learningRate=.1;
     for(var i=0;i<100;i++)
@@ -242,15 +260,12 @@ function iterate()
             break;
         }
     }
-    context.closePath();
-    context.stroke();        
     
-    DrawDecisionBoundary();
+    DrawDecisionBoundary(gfx);
     context.strokeStyle="#000000";    
 
-    DrawAxis(context)
-    
-    DrawPoints(context,10);
+    gfx.DrawAxis()   
+    DrawPoints(gfx,10);
 
     //draw the plane used to generate the points
     //DrawF(context);
@@ -266,7 +281,9 @@ function init()
 
     RandomizeLinearF()
     GenerateDataSet(LinearF)
-    
+
+    gfx = new Graph(context, 30, 600-30, 600*.9);
+   
     setInterval(iterate,10); 
 }
 </script>
