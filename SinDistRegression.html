@@ -3,23 +3,10 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>Neural network back prop, with matrix fomulation</title>
-<script type="text/javascript"
-  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
-</script>
-<style type="text/css">
-<!--
-body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
-h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
-#container { width:600px; margin:0 auto; }
-#myCanvas { background:#fff; border:1px solid #cbcbcb; }
-#nav { display:block; width:100%; text-align:center; }
-#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
-#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
--->
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet"   href="https://cdnjs.cloudflare.com/ajax/libs/normalize/3.0.3/normalize.css">
+<link rel="stylesheet"   href="https://cdnjs.cloudflare.com/ajax/libs/skeleton/2.0.4/skeleton.css">
+ <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <script>
 //---------------Matrix multiplication code
@@ -40,7 +27,6 @@ function RandomMat(inp,neurons)
 
 function PrintMat(m)
 {
-
     var str = "[";
     for(var j=0;j<m.length;j++)
     {
@@ -208,15 +194,40 @@ function Graph(context, center_x, center_y, zoom)
 
 var gfxDB, gfxAE;
 
-
-
 //----------------------Point distribution generation and drawing
+
+var setPoints = []
+var setTarget = []
 
 var axis_a;
 var axis_b;
 
-var setPoints = []
-var setTarget = []
+function RandomizeLinearF()
+{
+    var px = Math.random()
+    var py = Math.random()
+
+    axis_a = (py-.5)/(px-.5);
+    axis_b = (1-axis_a)*.5;       
+}
+
+function LinearF(x,y)
+{
+    var dist = axis_a*x+axis_b - y;
+
+    return dist>0?1:0;
+}
+
+function SinF(x,y)
+{
+    return y>(.4*Math.sin(x*6.28)+.5)?1:0;
+}
+
+function DiscF(x,y)
+{
+    dist = ((x-.5)*(x-.5) + (y-.5)*(y-.5)) - .3*.3;
+    return dist>0?1:0;
+}
 
 function HammersleyRand(a)
 {
@@ -227,40 +238,13 @@ function HammersleyRand(a)
     return(((a&16711935)<<8|(a&4278255360)>>>8)>>>0)/4294967296
 }
 
-function LinearF(x,y)
-{
-    return (axis_a*x-y+axis_b)>0?1:0;
-}
-
-function SinF(x,y)
-{
-    return y>(.4*Math.sin(x*6.28)+.5)?1:0;
-}
-
-function DiskF(x,y)
-{
-    dist = ((x-.5)*(x-.5) + (y-.5)*(y-.5))<.25*.25;
-    return dist>.5?1:0;
-}
-
-
-
-function RandomizeLinearF()
-{
-    var px = Math.random()
-    var py = Math.random()
-
-    axis_a = (py-.5)/(px-.5);
-    axis_b = (1-axis_a)*.5;
-       
-    setPoints = []
-    setTarget = []
-}
-
 //------------------ Compute and draw a set
 
 function GenerateDataSet(func)
 {
+    setPoints = []
+    setTarget = []
+
     for(var i=0;i<50;i++)
     {
         x = i/50
@@ -361,14 +345,12 @@ function iterate()
     var learningRate = 1;
     var err;
     var fitness=100;
-    
-    iterations++;
-    
+       
     var totalErr;
     
     var netResponses = []
     
-    for(var j=0;j<100;j++)
+    for(var j=0;j<10;j++)
     {
         totalErr = 0;
         for(var i=0;i<setPoints.length;i++)
@@ -406,25 +388,34 @@ function iterate()
         
     }    
     
-    DrawDecisionBoundary(gfxDB, 0,0,300)
+    if (iterations%2==0)
+    {
+        DrawDecisionBoundary(gfxDB, 0,0,300)
     
-    gfxDB.DrawAxis()
+        gfxDB.DrawAxis()
 
-    DrawSetPoints(gfxDB,5);
+        DrawSetPoints(gfxDB,5);
+    }
     
-    oldFitness = curFitness;    
-    curFitness = totalErr;
+    if (iterations%1==0)
+    {
+        oldFitness = curFitness;    
+        curFitness = totalErr;
 
-    gfxAE.context.beginPath();
-    gfxAE.context.strokeStyle="#ff0000";      
-    gfxAE.moveTo((iterations-1)/100,oldFitness); 
-    gfxAE.lineTo((iterations)/100,curFitness);
-    gfxAE.context.closePath();
-    gfxAE.context.stroke();        
+        gfxAE.context.beginPath();
+        gfxAE.context.strokeStyle="#ff0000";      
+        gfxAE.moveTo((iterations-1)/100,oldFitness); 
+        gfxAE.lineTo((iterations)/100,curFitness);
+        gfxAE.context.closePath();
+        gfxAE.context.stroke();        
+        
+        document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
+        
+        document.getElementById("text").innerHTML += " <br> "    
+    }    
     
-    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
-    
-    document.getElementById("text").innerHTML += " <br> "    
+    iterations++;
+
 }
 
 function init()
@@ -440,38 +431,70 @@ function init()
     gfxAE = new Graph(ctxAE, 10, 150-10, .5*150*.9);
     gfxDB = new Graph(ctxDB, 15, 300-15, 300*.9);
 
+    ctxAE.clearRect(0,0,300,300);
+
+    setInterval(iterate,1); 
+    
+    RandomizeLinearF();
+        
+    changeFunction(SinF);
+}
+
+function changeFunction(func)
+{
     gfxAE.context.clearRect(0,0,600,300);
     gfxAE.DrawAxis();
 
-    gfxDB.context.clearRect(0,0,300,300);
-
-    setInterval(iterate,10); 
-    
-    RandomizeLinearF()
-    GenerateDataSet( SinF)
+    iterations = 0;
+    wl_i1 = RandomMat(3,4);  //read from 3, ilayer is 4
+    wl_12 = RandomMat(4,1);
+    GenerateDataSet(func);
 }
 </script>
 
-
 <body onload="init()">
-<h1>Simple Sin(x) distribution classification</h1>
-<div id="container">
 
-<canvas id="DecisionBoundaries" width="300" height="300"></canvas>
-	
-<canvas id="AbsoluteError" width="600" height="150"></canvas>
+    <a href="https://github.com/you"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://camo.githubusercontent.com/365986a132ccd6a44c23a9169022c0b5c890c387/68747470733a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67" alt="Fork me on GitHub" data-canonical-src="https://s3.amazonaws.com/github/ribbons/forkme_right_red_aa0000.png"></a>
 
-<div id="text"></div>
+    <!-- Primary Page Layout
+    –––––––––––––––––––––––––––––––––––––––––––––––––– -->
+    <div class="container">
+        
+        <section class="header">
+          <h2 class="title">Neural network classifier.</h2>        
+        <div class="row">
+            <div class="four columns">
+                <canvas id="DecisionBoundaries" class="u-max-full-width" width="300" height="300"></canvas>
+            </div>
+            <div class="eight columns">
+                <div>Network error:</div>
+                <canvas id="AbsoluteError" class="u-max-full-width" width="500" height="150"></canvas>        
+                <div id="text"></div>
+                Distribution function:
+                
+                <select id = "selColor" onchange = "changeFunction( [LinearF, SinF, DiscF][this.selectedIndex])">
+                   <option >Linear</option>
+                   <option selected="selected">Sin</option>
+                   <option >Disc</option>
+                </select>                
+            </div>
+        </div>
+        </section>
 
-<h2>Intro</h2>
-This sample uses a 2x4x1 NN to classify points in a sin(x) distribution. 
- 
-</br>
-</br>
-<h2>Contact/Questions:</h2>
- &lt;my_github_account_username&gt;$@gmail.com$.
-</br>
-</br>
-</div>
+
+        <!-- Intro -->
+        
+        <div class="docs-section" id="intro">
+            <h4 class="docs-header">Intro</h4>
+            <p>This sample uses a 2x4x1 NN to classify points. </p>
+            <p>The network is traines using SGD(stochastic gradient descent). The point distribution can be changed using the drop down box.</p>
+        </div>
+               
+        
+        <div class="docs-section" id="intro">
+            <h4 class="docs-header">Contact/Questions</h4>
+            <p>&lt;my_github_account_username&gt;$@gmail.com$ </p>
+        </div>
+    </div>
 </body>
 </html>
