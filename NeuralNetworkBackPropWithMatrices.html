@@ -313,7 +313,7 @@ function init()
 
 
 <body onload="init()">
-<h1>Neural network back prop, with matrix fomulation</h1>
+<h1>Neural network back prop using simple gradient descent, with matrix fomulation</h1>
 <div id="container">
 	
 <canvas id="myCanvas" width="600" height="300"></canvas>
@@ -321,10 +321,28 @@ function init()
 <div id="text"></div>
 
 <h2>Intro</h2>
+The best way to learn something is to teach it, so here I go!<br><br>
+This sample uses a 2x4x1 NN to compute learn xor operation. 
+<br>
+This tutorial shows the following:
+<ul>
+<li>How to compute the derivatives of the Error function of a 2x2 NN using the chain rule</li>
+<li>How to express the derivatives using matrices, this helps in many ways:</li>
+<ul>
+<li>Generalizing the 2x2 configuration into other configuration</li>
+<li>Vectorization, by doing many operations at once we can speed up computations.</li>
+<li>Batching, by applying the forward pass to the whole set, averaging all the gradients, and using them to update the weights</li>
+</ul>
+</ul>
+<h4>Todo:</h4>
+<ul>
+<li>batched/mini batching  training</li>
+<li>dropout</li>
+</ul>
 
-In this tutorial we are going to derive the matrix formulation for the forward and the back propagation passes.
+<h2>Computing $\frac{\partial{Error}}{\partial{weights}}$</h2>.
 
-Let's think about a 2x2 neural netork and later on we'll generalize this for any configuration
+Let's consider this simple configuration and later on we'll generalize this for any configuration
 <pre>
               F          H
 i1 o-------a--o-------e--o
