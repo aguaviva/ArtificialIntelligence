@@ -29,36 +29,44 @@ var zoom = 600*.9;
 var center_x = 30;
 var center_y = 600-30;
 
+function ViewportX(x) { return (x*zoom+center_x); }
+function ViewportY(y) { return (-y*zoom+center_y); }
+function InvViewportX(vx) { return ((vx-center_x)/zoom); }
+function InvViewportY(vy) { return (-(vy-center_y)/zoom); }
+
+function moveTo(context, x,y) { context.moveTo(ViewportX(x),ViewportY(y)); }
+function lineTo(context, x,y) { context.lineTo(ViewportX(x),ViewportY(y)); }
+function fillText(context, str, x,y ) { context.fillText(str,ViewportX(x),ViewportY(y)); }
+
 function DrawAxis(context)
 {
     context.beginPath();
     context.strokeStyle="#000000";
-    context.moveTo((-100*zoom+center_x),(0*zoom+center_y));      
-    context.lineTo((100*zoom+center_x),(0*zoom+center_y));       
-    context.moveTo((0*zoom+center_x),(-100*zoom+center_y));      
-    context.lineTo((0*zoom+center_x),(100*zoom+center_y));       
+    moveTo(context, -100,0);      
+    lineTo(context,  100,0);      
+    moveTo(context, 0, -100);      
+    lineTo(context, 0, 100);      
     context.closePath();
     context.stroke();
 
     for(var i=-30;i<30;i++)
     {
         context.font="15px ti92pluspc";
-        context.fillText(i,center_x + i*zoom,center_y);
-        context.fillText(i,center_x, - i*zoom + center_y);
+        fillText(context, i,i,0);
+        fillText(context, i,0,i);
     }
 }
 
 function DrawLine(context, x1,y1,x2,y2)
 {
     context.beginPath();
-    context.moveTo((x1*zoom+center_x),(-y1*zoom+center_y));      
-    context.lineTo((x2*zoom+center_x),(-y2*zoom+center_y));           
+    moveTo(context, x1,y1);      
+    lineTo(context, x2,y2);      
     context.closePath();
     context.stroke();
 }
 
 //----------------------Point distribution generation and drawing
-
 
 var axis_a;
 var axis_b;
@@ -66,12 +74,12 @@ var axis_b;
 var points = []
 var target = []
 
-function F(x,y)
+function LinearF(x,y)
 {
     return (axis_a*x-y+axis_b)>0?1:0;
 }
 
-function randomF()
+function RandomizeLinearF()
 {
     var px = Math.random()
     var py = Math.random()
@@ -81,14 +89,19 @@ function randomF()
        
     points = []
     target = []
-    
+}
+
+//------------------ Compute and draw a set
+
+function GenerateDataSet(func)
+{
     for(var i=0;i<20;i++)
     {
         var x = Math.random()
         var y = Math.random()
         
         points.push([x, y])
-        target.push(F(x, y))
+        target.push(func(x, y))
     }
 }
 
@@ -101,7 +114,6 @@ function DrawF(context)
 
 function DrawPoints(context, radius)
 {
-
     for(var i=0;i<points.length;i++)
     {
         var x = points[i][0];
@@ -109,22 +121,21 @@ function DrawPoints(context, radius)
         if (target[i]==0)
         {
             context.beginPath();
-            context.moveTo((x*zoom+center_x-radius),(-y*zoom+center_y));      
-            context.lineTo((x*zoom+center_x+radius),(-y*zoom+center_y));           
-            context.moveTo((x*zoom+center_x),(-y*zoom+center_y-radius));      
-            context.lineTo((x*zoom+center_x),(-y*zoom+center_y+radius));           
+            context.moveTo((ViewportX(x) - radius), ViewportX(y));      
+            context.lineTo((ViewportX(x) + radius), ViewportX(y));           
+            context.moveTo(ViewportX(x), ViewportX(y) - radius);      
+            context.lineTo(ViewportX(x), ViewportX(y) + radius);           
             context.closePath();
             context.stroke();
         }
         else
         {
             context.beginPath();
-            context.arc((x*zoom+center_x),(-y*zoom+center_y), radius, 0 ,  2 * Math.PI);
+            context.arc(ViewportX(x), ViewportX(y), radius, 0 ,  2 * Math.PI);
             context.stroke();
         }
     }
 }
-
 
 //----------------------network
 
@@ -161,9 +172,10 @@ function DrawDecisionBoundary()
         for(var x=0;x<600;x++)
         {
             var index = (x + y * 600) * 4;
-
-            xx = (x-center_x)/zoom
-            yy = (center_y-y)/zoom
+           
+            xx = InvViewportX(x);
+            yy = InvViewportX(y);
+            
             v = (Act(net(w1,w2,w3, xx,yy)))>.5?255:0;
 
             canvasData.data[index + 0] = v;
@@ -220,10 +232,13 @@ function iterate()
         if (Math.abs(totalErr)<.1)
         {
             epoch = 0;
-            randomF();
             w1 = 2*Math.random()-1;
             w2 = 2*Math.random()-1;
             w3 = 2*Math.random()-1;
+            
+            RandomizeLinearF()
+            GenerateDataSet(LinearF)
+            
             break;
         }
     }
@@ -249,7 +264,8 @@ function init()
     context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,600);
 
-    randomF();
+    RandomizeLinearF()
+    GenerateDataSet(LinearF)
     
     setInterval(iterate,10); 
 }
