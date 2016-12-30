@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<title>HTML5 Simple Gradient Descent</title>
+<title>Simple Linear Classification</title>
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
 </script>
@@ -21,12 +21,44 @@ h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:no
 -->
 </style>
 </head>
-
 <script>
+
+//-----------------------simple graphing code
 
 var zoom = 600*.9;
 var center_x = 30;
 var center_y = 600-30;
+
+function DrawAxis(context)
+{
+    context.beginPath();
+    context.strokeStyle="#000000";
+    context.moveTo((-100*zoom+center_x),(0*zoom+center_y));      
+    context.lineTo((100*zoom+center_x),(0*zoom+center_y));       
+    context.moveTo((0*zoom+center_x),(-100*zoom+center_y));      
+    context.lineTo((0*zoom+center_x),(100*zoom+center_y));       
+    context.closePath();
+    context.stroke();
+
+    for(var i=-30;i<30;i++)
+    {
+        context.font="15px ti92pluspc";
+        context.fillText(i,center_x + i*zoom,center_y);
+        context.fillText(i,center_x, - i*zoom + center_y);
+    }
+}
+
+function DrawLine(context, x1,y1,x2,y2)
+{
+    context.beginPath();
+    context.moveTo((x1*zoom+center_x),(-y1*zoom+center_y));      
+    context.lineTo((x2*zoom+center_x),(-y2*zoom+center_y));           
+    context.closePath();
+    context.stroke();
+}
+
+//----------------------Point distribution generation and drawing
+
 
 var axis_a;
 var axis_b;
@@ -46,7 +78,7 @@ function randomF()
 
     axis_a = (py-.5)/(px-.5);
     axis_b = (1-axis_a)*.5;
-    
+       
     points = []
     target = []
     
@@ -94,6 +126,8 @@ function DrawPoints(context, radius)
 }
 
 
+//----------------------network
+
 function Act(x)
 {
     return 1.0/(1.0+Math.exp(-5*x));
@@ -102,34 +136,6 @@ function Act(x)
 function DerAct(x)
 {
     return Act(x)*(1-Act(x));
-}
-
-function DrawAxis(context)
-{
-    context.beginPath();
-    context.strokeStyle="#000000";
-    context.moveTo((-100*zoom+center_x),(0*zoom+center_y));      
-    context.lineTo((100*zoom+center_x),(0*zoom+center_y));       
-    context.moveTo((0*zoom+center_x),(-100*zoom+center_y));      
-    context.lineTo((0*zoom+center_x),(100*zoom+center_y));       
-    context.closePath();
-    context.stroke();
-
-    for(var i=-30;i<30;i++)
-    {
-        context.font="15px ti92pluspc";
-        context.fillText(i,center_x + i*zoom,center_y);
-        context.fillText(i,center_x, - i*zoom + center_y);
-    }
-}
-
-function DrawLine(context, x1,y1,x2,y2)
-{
-    context.beginPath();
-    context.moveTo((x1*zoom+center_x),(-y1*zoom+center_y));      
-    context.lineTo((x2*zoom+center_x),(-y2*zoom+center_y));           
-    context.closePath();
-    context.stroke();
 }
 
 function net(w1,w2, w3, i1,i2)
@@ -146,58 +152,8 @@ var w1=0;
 var w2=0;
 var w3=0;
 
-var epoch = 0;
-
-
-function iterate()
+function DrawDecisionBoundary()
 {    
-    context.beginPath();
-    context.strokeStyle="#ff0000";
-
-    var l=.1;
-    for(var i=0;i<100;i++)
-    {
-        epoch++;
-
-        var totalErr = 0;
-    
-        for(var pindex=0;pindex<points.length;pindex++)
-        {   
-            var p = points[pindex];
-            var i1 = p[0];
-            var i2 = p[1];
-
-            //compute real value
-            t = target[pindex]
-            
-            // e = ( s(net(w1,w2,i1,i2))-t)^2
-            n = net(w1,w2,w3, i1,i2)
-            o = Act(n);
-            
-            totalErr += (o-t)*(o-t);
-            
-            // de = 2*(s(net)-t) * s'(net) * (dg/da, dg/db)          
-            de = 2*(o-t) * DerAct(n);
-
-            w1+=-l*de*dnetdw1(i1,i2);
-            w2+=-l*de*dnetdw2(i1,i2);
-            w3+=-l*de*dnetdw3(i1,i2);
-        }
-        
-        // if g is close to t then restart
-        if (Math.abs(totalErr)<.1)
-        {
-            epoch = 0;
-            randomF();
-            w1 = 2*Math.random()-1;
-            w2 = 2*Math.random()-1;
-            w3 = 2*Math.random()-1;
-            break;
-        }
-    }
-    context.closePath();
-    context.stroke();        
-    
     var canvasData = context.getImageData(0, 0, 600, 600);
     
     for(var y=0;y<600;y++)
@@ -217,7 +173,64 @@ function iterate()
         }
     }
     context.putImageData(canvasData, 0, 0);    
+}
 
+//------------------------learning loop
+
+var epoch = 0;
+
+function iterate()
+{    
+    context.beginPath();
+    context.strokeStyle="#ff0000";
+
+    var learningRate=.1;
+    for(var i=0;i<100;i++)
+    {
+        epoch++;
+
+        var totalErr = 0;
+    
+        for(var pindex=0;pindex<points.length;pindex++)
+        {   
+            var p = points[pindex];
+            var i1 = p[0];
+            var i2 = p[1];
+
+            //compute real value
+            t = target[pindex]
+            
+            // e = ( s(net(w1,w2,i1,i2))-t)^2
+            n = net(w1,w2,w3, i1,i2)
+            o = Act(n);
+            
+            //compute mean square error
+            totalErr += (o-t)*(o-t);
+            
+            // de = 2*(s(net)-t) * s'(net) * (dg/da, dg/db)          
+            de = 2*(o-t) * DerAct(n);
+
+            //update weights with dE
+            w1 += -learningRate * de * dnetdw1(i1,i2);
+            w2 += -learningRate * de * dnetdw2(i1,i2);
+            w3 += -learningRate * de * dnetdw3(i1,i2);
+        }
+        
+        // if g is close to t then restart
+        if (Math.abs(totalErr)<.1)
+        {
+            epoch = 0;
+            randomF();
+            w1 = 2*Math.random()-1;
+            w2 = 2*Math.random()-1;
+            w3 = 2*Math.random()-1;
+            break;
+        }
+    }
+    context.closePath();
+    context.stroke();        
+    
+    DrawDecisionBoundary();
     context.strokeStyle="#000000";    
 
     DrawAxis(context)
@@ -227,9 +240,7 @@ function iterate()
     //draw the plane used to generate the points
     //DrawF(context);
 
-
     document.getElementById("text").innerHTML = "<br>Epoch:"+ epoch + "<br>Error: "  + Math.abs(totalErr) + "<br>Coeff a: "  + w1 + "<br>Coeff b: " + w2 + "<br>Coeff c: " + w3 + "<br>";
-    
 }
 
 function init()
@@ -239,7 +250,6 @@ function init()
     context.clearRect(0,0,600,600);
 
     randomF();
-
     
     setInterval(iterate,10); 
 }
@@ -257,7 +267,9 @@ function init()
 <h2>Intro</h2>
 
 This a demo classifies 2 types of points. The points can be separated by a plane.  We are training a neuron to find the plane that divides the set.
-  
+</br>
+</br>
+Note that without a bias we'd only be able to come up with planes that pass by the origin.  
 </br>
 </br>
 <h2>Contact/Questions:</h2>

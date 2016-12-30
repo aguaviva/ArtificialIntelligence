@@ -176,25 +176,49 @@ function GraphAxis()
     context.stroke(); 
 }
 
-function Graph()
-{
-}
+function DrawDecisionBoundary(tx,ty, size)
+{    
+    var canvasData = context.getImageData(0, 0, size, size);
+    
+    for(var y=0;y<size;y++)
+    {
+        for(var x=0;x<size;x++)
+        {
+            var index = (x + y * size) * 4;
 
+            xx = x/size
+            yy = 1-y/size
+
+            var net1 = MulMat(wl_i1, [[xx],[yy],[1]]);
+            var o1   = funcMat(Act, net1);
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            v = o2[0][0]>.5?255:0;
+
+            canvasData.data[index + 0] = v;
+            canvasData.data[index + 1] = 255-v;
+            canvasData.data[index + 2] = 0;
+            canvasData.data[index + 3] = 128;
+        }
+    }
+    context.putImageData(canvasData, tx, ty);    
+}
 //-------------------------------
 
+var wl_i1 = RandomMat(3,4);  //read from 3, ilayer is 4
+var wl_12 = RandomMat(4,1);
 
-var wl_i1 = RandomMat(2,2);
-var wl_12 = RandomMat(2,1);
-
-wl_i1 = [[-0.16595599,  0.44064899, -0.99977125, -0.39533485],
+/*
+wl_i1 = TransposeMat([[-0.16595599,  0.44064899, -0.99977125, -0.39533485],
          [-0.70648822, -0.81532281, -0.62747958, -0.30887855],
-         [-0.20646505,  0.07763347, -0.16161097,  0.370439  ]];
+         [-0.20646505,  0.07763347, -0.16161097,  0.370439  ]]);
 
-wl_12 = [[-0.5910955 ],
+wl_12 = TransposeMat([[-0.5910955 ],
          [ 0.75623487],
          [-0.94522481],
-         [ 0.34093502]];
-
+         [ 0.34093502]]);
+*/
 
 var iterations = 0;
 var oldFitness=1000;
@@ -204,7 +228,7 @@ function iterate()
     var il    = [ [ [0],[0], [1] ], [ [0],[1], [1] ], [ [1],[0], [1] ] , [ [1],[1], [1] ] ];   //input
     var t     = [ [ [0] ], [ [1] ], [ [1] ], [ [0] ] ];   //target
 
-    var learningRate = .01;
+    var learningRate = 1;
     var err;
     var fitness=100;
     
@@ -214,14 +238,13 @@ function iterate()
     
     var netResponses = []
     
-    //for(var j=0;j<100;j++)
+    for(var j=0;j<1;j++)
     {
         totalErr = 0;
         for(var i=0;i<4;i++)
         {       
             //forward pass
-            //
-            
+            //            
             var o0   = il[i];
             var net1 = MulMat(wl_i1, o0);
             var o1   = funcMat(Act, net1);
@@ -252,13 +275,16 @@ function iterate()
         }
         
     }    
+    
+    DrawDecisionBoundary(600-100-10,10, 100)
+    
     oldFitness = curFitness;    
     curFitness = totalErr;
 
     context.beginPath();
     context.strokeStyle="#ff0000";    
-    context.moveTo((iterations-1)/20+20,300-oldFitness*50-20); 
-    context.lineTo((iterations)/20+20,300-curFitness*50-20);
+    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20); 
+    context.lineTo((iterations)/10+20,300-curFitness*300-20);
     context.closePath();
     context.stroke();        
     
@@ -274,83 +300,6 @@ function iterate()
     }
     
 }
-/*
-
-var wl_i1 = RandomMat(2,1);
-
-var iterations = 0;
-var oldFitness=1000;
-var curFitness=1000;
-function iterate()
-{
-    var il    = [ [ [1],[0] ], [ [1],[1] ] ];   //input
-    var t     = [ [ [1] ], [ [0] ] ];   //target
-    //var il    = [ [ [1],[0] ], [ [1],[1] ], [ [0],[1] ] , [ [0],[0] ] ];   //input
-    //var t     = [ [ [1] ], [ [0] ], [ [1] ], [ [0] ] ];   //target
-
-    var learningRate = 10;
-    var err;
-    var fitness=100;
-    
-    iterations++;
-    
-    var totalErr;
-    
-    var netResponses = []
-    
-    //for(var j=0;j<100;j++)
-    {
-        totalErr = 0;
-        for(var i=0;i<t.length;i++)
-        {       
-            //forward pass
-            //
-            
-            var o0   = il[i];
-            var net1 = MulMat(wl_i1, o0);
-            var o1   = funcMat(Act, net1);
-
-            netResponses[i] = o1;
-
-            err = SubMat(o1, t[i]);
-            
-            //back propagate
-            //
-            
-            // outer layer
-            var sp1  =  SimpleMulMat(funcMat(DerAct, net1), err);      
-            var e1   = MulMat(sp1, TransposeMat(o0));
-                        
-            //update weights
-            UpdateWeights(wl_i1, e1, -learningRate);           
-            
-            totalErr += MulMat( err, TransposeMat(err))[0][0];
-        }
-        
-    }    
-    oldFitness = curFitness;    
-    curFitness = totalErr;
-
-    context.beginPath();
-    context.strokeStyle="#ff0000";    
-    context.moveTo((iterations-1)/20+20,300-oldFitness*50-20); 
-    context.lineTo((iterations)/20+20,300-curFitness*50-20);
-    context.closePath();
-    context.stroke();        
-    
-    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
-    
-    document.getElementById("text").innerHTML += " <br> "
-    
-    for(var i=0;i<t.length;i++)
-    {
-        document.getElementById("text").innerHTML += il[i][0]+" xor "
-        document.getElementById("text").innerHTML += il[i][1]+" = "
-        document.getElementById("text").innerHTML += netResponses[i]+"<br>"
-    }
-    
-}
-*/
 
 function init()
 {
@@ -373,9 +322,9 @@ function init()
 
 <h2>Intro</h2>
 
-In this tutorial we are going to derive the matrix formualtion for the forward and the back propagation passes.
+In this tutorial we are going to derive the matrix formulation for the forward and the back propagation passes.
 
-Let's think about a 2x2 neural netork
+Let's think about a 2x2 neural netork and later on we'll generalize this for any configuration
 <pre>
               F          H
 i1 o-------a--o-------e--o
