@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Neural network back prop, with matrix fomulation</title>
+<script type="text/javascript"
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<style type="text/css">
+<!--
+body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+-->
+</style>
+</head>
+<script>
+
+function RandomMat(inp,neurons)
+{
+    var L = []
+    for(var i=0;i<neurons;i++)
+    {
+        L[i] = [];
+        for(var j=0;j<inp;j++)
+        {
+            L[i].push(2*Math.random()-1);
+        }
+    }
+    return L;
+}
+
+function PrintMat(m)
+{
+
+    var str = "[";
+    for(var j=0;j<m.length;j++)
+    {
+        str += "[" + m[j].join(",") + "]";
+    }
+    str += "]";
+    return str;
+}
+
+function MulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m2[0].length;i++)        
+        {
+            var tmp=0;
+            for(var k=0;k<m1[0].length;k++)
+            {
+                tmp += (m1[j][k] * m2[k][i]);
+            }
+            O[j].push( tmp);
+        }
+    }
+    return O;  
+}
+
+
+function TransposeMat(m)
+{
+    var O = [];        
+    for(var j=0;j<m[0].length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m.length;i++)        
+        {
+            O[j][i] = m[i][j];
+        }
+    }
+    return O;
+}
+
+function AddMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] + m2[j][i];
+        }
+    }
+    return O;
+}
+
+function SimpleMulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] * m2[j][i];
+        }
+    }
+    return O;
+}
+
+
+function SubMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] - m2[j][i];
+        }
+    }
+    return O;
+}
+
+function Act(x)
+{
+    return 1.0/(1.0+Math.exp(-x));
+}
+
+function DerAct(x)
+{
+    return Act(x)*(1-Act(x));
+}
+
+
+function funcMat(func, m )
+{
+    var O = [];        
+    for(var j=0;j<m.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m[0].length;i++)        
+        {
+            O[j][i] = func(m[j][i]);
+        }
+    }
+    return O;
+}
+
+function UpdateWeights(m1,m2, learningRate)
+{
+    for(var i=0;i<m1.length;i++)
+    {
+        for(var j=0;j<m1[0].length;j++)
+        {
+            m1[i][j] += learningRate * m2[i][j];
+        }
+    }
+}
+
+//-------------------------------
+
+function GraphAxis()
+{
+    context.beginPath();
+    context.strokeStyle="#000000";    
+    context.moveTo(0,300-20); 
+    context.lineTo(600,300-20);
+    context.moveTo(20,0); 
+    context.lineTo(20,300);
+    context.closePath();
+    context.stroke(); 
+}
+
+// this helps taking care of the bias
+function AddBiasOneT(vector)
+{
+    return vector.concat([[1]]);
+}
+
+
+function DrawDecisionBoundary(tx,ty, size)
+{    
+    var canvasData = context.getImageData(0, 0, size, size);
+    
+    for(var y=0;y<size;y++)
+    {
+        for(var x=0;x<size;x++)
+        {
+            var index = (x + y * size) * 4;
+
+            xx = x/size
+            yy = 1-y/size
+
+            var o0   = AddBiasOneT([[xx],[yy]]);
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            v = o2[0][0]>.5?255:0;
+
+            canvasData.data[index + 0] = v;
+            canvasData.data[index + 1] = 255-v;
+            canvasData.data[index + 2] = 0;
+            canvasData.data[index + 3] = 128;
+        }
+    }
+    context.putImageData(canvasData, tx, ty);    
+}
+//-------------------------------
+
+var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4, the +1 is because of the bias
+var wl_12 = RandomMat(4+1,1);
+
+/*
+wl_i1 = TransposeMat([[-0.16595599,  0.44064899, -0.99977125, -0.39533485],
+         [-0.70648822, -0.81532281, -0.62747958, -0.30887855],
+         [-0.20646505,  0.07763347, -0.16161097,  0.370439  ]]);
+
+wl_12 = TransposeMat([[-0.5910955 ],
+         [ 0.75623487],
+         [-0.94522481],
+         [ 0.34093502]]);
+*/
+
+var iterations = 0;
+var oldFitness=1000;
+var curFitness=1000;
+function iterate()
+{
+    var il    = [ [ [0],[0] ], [ [0],[1] ], [ [1],[0] ] , [ [1],[1] ] ];   //input
+    var t     = [ [ [0] ], [ [1] ], [ [1] ], [ [0] ] ];   //target
+
+    var learningRate = 1;
+    var err;
+    var fitness=100;
+    
+    iterations++;
+    
+    var totalErr;
+    
+    var netResponses = []
+    
+    for(var j=0;j<1;j++)
+    {
+        totalErr = 0;
+        for(var i=0;i<4;i++)
+        {       
+            //forward pass
+            //            
+            var o0   = AddBiasOneT(il[i]);
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            netResponses[i] = o2;
+
+            err = SubMat(o2, t[i]);
+            
+            //back propagate
+            //
+            
+            // outer layer
+            var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
+            var e2   = MulMat(sp2, TransposeMat(o1));
+            
+            // inner layer
+            var wsp2   = MulMat(TransposeMat(wl_12), sp2);
+            var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);                  
+            var e1   = MulMat(sp1, TransposeMat(o0));
+            
+            //update weights
+            UpdateWeights(wl_12, e2, -learningRate);           
+            UpdateWeights(wl_i1, e1, -learningRate);        
+            
+            totalErr += MulMat( err, TransposeMat(err))[0][0];
+        }
+        
+    }    
+    
+    DrawDecisionBoundary(600-100-10,10, 100)
+    
+    oldFitness = curFitness;    
+    curFitness = totalErr;
+
+    context.beginPath();
+    context.strokeStyle="#ff0000";    
+    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20); 
+    context.lineTo((iterations)/10+20,300-curFitness*300-20);
+    context.closePath();
+    context.stroke();        
+    
+    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
+    
+    document.getElementById("text").innerHTML += " <br> "
+    
+    for(var i=0;i<4;i++)
+    {
+        document.getElementById("text").innerHTML += il[i][0]+" xor "
+        document.getElementById("text").innerHTML += il[i][1]+" = "
+        document.getElementById("text").innerHTML += netResponses[i]+"<br>"
+    }
+    
+}
+
+function init()
+{
+
+    var myCanvas = document.getElementById("myCanvas");
+    context = myCanvas.getContext('2d');
+    context.clearRect(0,0,600,300);
+    GraphAxis();
+    setInterval(iterate,10); 
+    
+}
+</script>
+
+
+<body onload="init()">
+<h1>Neural network back prop using simple gradient descent, with matrix fomulation + bias for each layer</h1>
+<div id="container">
+	
+<canvas id="myCanvas" width="600" height="300"></canvas>
+
+<div id="text"></div>
+
+<h2>Intro</h2>
+
+<p>In the previous sample only the input layer uses a bias. The bias was handled by conveniently appending a 1 to the input vector.</p>
+<p>Now we'll see what do we need to do to add a bias term to every layer</p>
+For impatients:
+<ul>
+<li>All you need to do is to append a 1 to the vector output by a layer, and there you go.</li>
+<li>The weight matrices wont be 2x2 but will be 3x2</li>
+</ul>
+Now the details:
+
+This sample uses a 2x4x1 NN to compute learn xor operation. 
+<br>
+This tutorial shows the following:
+<ul>
+<li>How to compute the derivatives of the Error function of a 2x2 NN using the chain rule</li>
+<li>How to express the derivatives using matrices, this helps in many ways:</li>
+<ul>
+<li>Generalizing the 2x2 configuration into other configuration</li>
+<li>Vectorization, by doing many operations at once we can speed up computations.</li>
+<li>Batching, by applying the forward pass to the whole set, averaging all the gradients, and using them to update the weights</li>
+</ul>
+</ul>
+<h4>Todo:</h4>
+<ul>
+<li>batched/mini batching  training</li>
+<li>dropout</li>
+<li>Add momentum to learning</li>
+</ul>
+
+<h2>Computing $\frac{\partial{Error}}{\partial{weights}}$</h2>.
+
+Let's consider this simple configuration and later on we'll generalize this for any configuration
+<pre>
+              F          H
+i1 o-------a--o-------e--o
+    \        / \        /
+     \      /   \      /
+      \    b     \    f
+       \  /       \  /          
+        \/         \/  
+        /\         /\                                   
+       /  \       /  \ 
+      /    c     /    g                               
+     /      \   /      \                                   
+    /        \ /        \                                       
+i2 o-------d--o-------h--o
+              G          I
+</pre>
+
+$$\require{cancel}$$
+
+This is a forward pass:
+
+$$\begin{align*} 
+F &= \sigma(net_F) &= \sigma(a\cdot i_1 + b\cdot i_2 + b_F) \\
+G &= \sigma(net_G) &= \sigma(c\cdot i_1 + d\cdot i_2 + b_G) \\
+H &= \sigma(net_H) &= \sigma(e\cdot F+f\cdot G + b_H) \\
+I &= \sigma(net_I) &= \sigma(g\cdot F+h\cdot G + b_I) 
+\end{align*}$$
+
+We are starting to see some matrices here...
+
+$$\begin{pmatrix}net_F\\
+net_G\\
+\end{pmatrix} = \begin{pmatrix} a & b \\ c & d
+\end{pmatrix} \cdot \begin{pmatrix}i_1\\
+i_2\\ \end{pmatrix} + \begin{pmatrix}b_F\\
+b_G\\
+\end{pmatrix}$$
+
+$$\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix} = \begin{pmatrix} e & f \\ g & h
+\end{pmatrix} \cdot \begin{pmatrix}F\\
+G\\ \end{pmatrix} + \begin{pmatrix}b_H\\
+b_I\\
+\end{pmatrix}$$
+
+And the full forward operation woudl be given by:
+ 
+$$\begin{pmatrix}H\\
+I\\
+\end{pmatrix} = \sigma \Bigg( \begin{pmatrix} e & f \\ g & h
+\end{pmatrix} \cdot \sigma \Bigg( \begin{pmatrix} a & b \\ c & d
+\end{pmatrix} \cdot \begin{pmatrix}i_1\\
+i_2\\ 
+\end{pmatrix} + \begin{pmatrix}b_F\\
+b_G\\
+\end{pmatrix} \Bigg) + \begin{pmatrix}b_H\\
+b_I\\
+\end{pmatrix} \Bigg)
+$$ 
+ 
+Now we want to see how $H$ and $I$ change when the weights $a ... b$ change. This is given by the derivative.<br>
+<br>
+For computing derivatives we'll be using the chain rule. We'll need some formulas:
+$$ \frac{d\sigma(f(...))}{df(...)} = \sigma'(f(...)) \cdot f'(...)'$$
+
+
+$$\frac{\partial{H}}{\partial{e}}  = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{e}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot G + b_H)}}{\partial{e}} = \sigma'(net_H) F$$
+$$\frac{\partial{H}}{\partial{f}}  = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{f}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot G + b_H)}}{\partial{f}} = \sigma'(net_H) G$$
+$$\frac{\partial{H}}{\partial{b_H}}  = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{f}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot G + b_H)}}{\partial{b_H}} = \sigma'(net_H) \cdot 1$$
+
+$$\frac{\partial{I}}{\partial{g}}  = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{g}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot G + b_I)}}{\partial{g}} = \sigma'(net_I) F$$
+$$\frac{\partial{I}}{\partial{h}}  = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{h}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot G + b_I)}}{\partial{h}} = \sigma'(net_I) G$$
+$$\frac{\partial{I}}{\partial{b_I}}  = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{b_I}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot G + b_I)}}{\partial{b_I}} = \sigma'(net_I) \cdot 1$$
+
+
+Starting from the output we immediatelly see a jacobian:
+
+$$\begin{pmatrix}\frac{\partial{H}}{\partial{e}} & \frac{\partial{H}}{\partial{f}} & \frac{\partial{H}}{\partial{b_H}}\\ 
+\frac{\partial{I}}{\partial{g}} & \frac{\partial{I}}{\partial{h}} & \frac{\partial{I}}{\partial{b_I}}\\
+\end{pmatrix} = \begin{pmatrix} \sigma'(net_H) F & \sigma'(net_H) G  & \sigma'(net_H)1\\ \sigma'(net_I)F & \sigma'(net_I)G & \sigma'(net_I)1\end{pmatrix} = \sigma'(\begin{pmatrix}net_H\\
+net_I\\
+\end{pmatrix}) \cdot \begin{pmatrix} F  & G & 1\end{pmatrix}$$
+
+Let see how the outputs change with the weights $a .. d$:<br><br>
+
+For H:
+
+$$\frac{\partial{H}}{\partial{a}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{a}} =\sigma'(net_H)  \frac{\partial{(e\cdot \sigma(net_F)+f\cdot G)}}{\partial{a}} = \sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot i_1$$
+$$\frac{\partial{H}}{\partial{b}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{b}} =\sigma'(net_H)  \frac{\partial{(e\cdot \sigma(net_F)+f\cdot G)}}{\partial{b}} = \sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot i_2$$
+$$\frac{\partial{H}}{\partial{b_F}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{b_F}} =\sigma'(net_H)  \frac{\partial{(e\cdot \sigma(net_F)+f\cdot G)}}{\partial{b_F}} = \sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot 1$$
+
+$$\frac{\partial{H}}{\partial{c}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{c}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot \sigma(net_G))}}{\partial{c}} = \sigma'(net_H) \cdot f\cdot \sigma'(net_G) \cdot i_1$$
+$$\frac{\partial{H}}{\partial{d}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{d}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot \sigma(net_G))}}{\partial{d}} = \sigma'(net_H) \cdot f\cdot \sigma'(net_G) \cdot i_2$$
+$$\frac{\partial{H}}{\partial{b_G}} = \sigma'(net_H) \frac{\partial{(net_H)}}{\partial{b_G}} =\sigma'(net_H)  \frac{\partial{(e\cdot F+f\cdot \sigma(net_G))}}{\partial{b_G}} = \sigma'(net_H) \cdot e\cdot \sigma'(net_G) \cdot 1$$
+
+For I:
+
+$$\frac{\partial{I}}{\partial{a}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{a}} =\sigma'(net_I)  \frac{\partial{(g\cdot \sigma(net_F)+h\cdot G)}}{\partial{a}} = \sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot i_1$$
+$$\frac{\partial{I}}{\partial{b}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{b}} =\sigma'(net_I)  \frac{\partial{(g\cdot \sigma(net_F)+h\cdot G)}}{\partial{b}} = \sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot i_2$$
+$$\frac{\partial{I}}{\partial{b_H}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{b_H}} =\sigma'(net_I)  \frac{\partial{(g\cdot \sigma(net_F)+h\cdot G)}}{\partial{b_H}} = \sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot 1$$
+
+
+$$\frac{\partial{I}}{\partial{c}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{c}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot \sigma(net_G))}}{\partial{c}} = \sigma'(net_I) \cdot h\cdot \sigma'(net_G) \cdot i_1$$
+$$\frac{\partial{I}}{\partial{d}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{d}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot \sigma(net_G))}}{\partial{d}} = \sigma'(net_I) \cdot h\cdot \sigma'(net_G) \cdot i_2$$
+$$\frac{\partial{I}}{\partial{b_I}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{b_I}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot \sigma(net_G))}}{\partial{b_I}} = \sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot 1$$
+
+
+
+
+Now we have all the ingredients to train our network:
+
+First we need a forward pass, we take the output and we compute how far are we from the target result $t_1 and t_2$:
+
+$$Error = (H-t_1)^2 + (I-t_2)^2$$
+
+And it's derivative is:
+
+$$d(Error) = 2(H-t_1)dH + 2(I-t_2)dI= 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+dH\\
+dI
+\end{pmatrix}$$
+
+Its partial derivatives are:
+
+$$\frac{\partial{Error}}{\partial{e}} = 2(H-t_1)dH + 2(I-t_2)dI= 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{e}}\\
+\cancelto{0}{\frac{\partial{I}}{\partial{e}}}
+\end{pmatrix} = 2(H-t_1) \frac{\partial{H}}{\partial{e}}     $$
+
+$$\frac{\partial{Error}}{\partial{e}} = 2(H-t_1) \frac{\partial{H}}{\partial{e}} =  2(H-t_1) \sigma(net_H)F    $$
+$$\frac{\partial{Error}}{\partial{f}} = 2(H-t_1) \frac{\partial{H}}{\partial{f}} =  2(H-t_1) \sigma(net_H)G     $$
+$$\frac{\partial{Error}}{\partial{b_H}} = 2(H-t_1) \frac{\partial{H}}{\partial{b_H}} =  2(H-t_1) \sigma(net_H)1     $$
+
+$$\frac{\partial{Error}}{\partial{g}} = 2(I-t_2) \frac{\partial{I}}{\partial{g}}  =  2(I-t_2) \sigma(net_I)F    $$
+$$\frac{\partial{Error}}{\partial{h}} = 2(I-t_2) \frac{\partial{I}}{\partial{h}}  =  2(I-t_2) \sigma(net_I)G   $$
+$$\frac{\partial{Error}}{\partial{b_I}} = 2(I-t_2) \frac{\partial{I}}{\partial{b_I}}  =  2(I-t_2) \sigma(net_I)1   $$
+
+
+rearranging:
+
+$$ \begin{pmatrix}\frac{\partial{E}}{\partial{e}} & \frac{\partial{E}}{\partial{f}}  & \frac{\partial{E}}{\partial{b_H}}\\ 
+\frac{\partial{E}}{\partial{g}} & \frac{\partial{E}}{\partial{h}} & \frac{\partial{E}}{\partial{b_I}}\\
+\end{pmatrix} = 2 \cdot  
+\begin{pmatrix}
+\sigma'(net_H) \cdot (H-t_1) \\
+\sigma'(net_I) \cdot (I-t_2) \\
+\end{pmatrix} 
+\cdot 
+\begin{pmatrix} F  & G & 1\end{pmatrix}  
+= \begin{pmatrix}
+\sigma'(net_H) & 0 \\
+0 & \sigma'(net_I)\\
+\end{pmatrix} 
+\cdot 
+2 
+\cdot
+\begin{pmatrix}
+(H-t_1) \\
+(I-t_2) \\
+\end{pmatrix} 
+\cdot 
+\begin{pmatrix} F  & G & 1\end{pmatrix}  
+$$
+
+and in a similar way:
+
+$$\frac{\partial{Error}}{\partial{a}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{a}}\\
+\frac{\partial{I}}{\partial{a}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot i_1\\
+\sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot i_1
+\end{pmatrix} $$
+
+$$\frac{\partial{Error}}{\partial{b}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{b}}\\
+\frac{\partial{I}}{\partial{b}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot i_2\\
+\sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot i_2
+\end{pmatrix} $$
+
+$$\frac{\partial{Error}}{\partial{b_F}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{b_F}}\\
+\frac{\partial{I}}{\partial{b_F}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot e\cdot \sigma'(net_F) \cdot 1\\
+\sigma'(net_I) \cdot g\cdot \sigma'(net_F) \cdot 1
+\end{pmatrix} $$
+
+$$\frac{\partial{Error}}{\partial{c}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{c}}\\
+\frac{\partial{I}}{\partial{c}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot f\cdot \sigma'(net_G) \cdot i_1\\
+\sigma'(net_I) \cdot h\cdot \sigma'(net_G) \cdot i_1
+\end{pmatrix} $$
+
+$$\frac{\partial{Error}}{\partial{d}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{d}}\\
+\frac{\partial{I}}{\partial{d}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot f\cdot \sigma'(net_G) \cdot i_2\\
+\sigma'(net_I) \cdot h\cdot \sigma'(net_G) \cdot i_2
+\end{pmatrix} $$
+
+$$\frac{\partial{Error}}{\partial{b_G}} = 2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\frac{\partial{H}}{\partial{b_G}}\\
+\frac{\partial{I}}{\partial{b_G}}
+\end{pmatrix} =   2\begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot f\cdot \sigma'(net_G) \cdot 1\\
+\sigma'(net_I) \cdot h\cdot \sigma'(net_G) \cdot 1
+\end{pmatrix} $$
+
+
+simplifying a bit
+
+$$\frac{\partial{Error}}{\partial{a}} = 
+2\cdot \sigma'(net_F) \cdot i_1 \cdot \begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot e \\
+\sigma'(net_I) \cdot g
+\end{pmatrix} = 2\cdot \sigma'(net_F) \cdot i_1 \cdot (((H-t_1) \cdot \sigma'(net_H) \cdot e)  + ((I-t_2) \cdot \sigma'(net_I) \cdot g))
+ $$
+
+$$\frac{\partial{Error}}{\partial{b}} = 
+2\cdot \sigma'(net_F) \cdot i_2 \cdot \begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot e\\
+\sigma'(net_I) \cdot g 
+\end{pmatrix} = 2\cdot \sigma'(net_F) \cdot i_2 \cdot (((H-t_1) \cdot \sigma'(net_H) \cdot e)  + ((I-t_2) \cdot \sigma'(net_I) \cdot g))$$
+
+$$\frac{\partial{Error}}{\partial{c}} = 
+2\cdot \sigma'(net_G) \cdot i_1 \cdot \begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot f \\
+\sigma'(net_I) \cdot h
+\end{pmatrix} = 2\cdot \sigma'(net_G) \cdot i_1 \cdot (((H-t_1) \cdot \sigma'(net_H) \cdot f)  + ((I-t_2) \cdot \sigma'(net_I) \cdot h))$$
+
+$$\frac{\partial{Error}}{\partial{d}} = 
+2\cdot \sigma'(net_G) \cdot i_2 \cdot \begin{pmatrix} (H-t_1) & (I-t_2) \end{pmatrix} \cdot \begin{pmatrix}
+\sigma'(net_H) \cdot f \\
+\sigma'(net_I) \cdot h 
+\end{pmatrix} = 2\cdot \sigma'(net_G) \cdot i_2 \cdot (((H-t_1) \cdot \sigma'(net_H) \cdot f)  + ((I-t_2) \cdot \sigma'(net_I) \cdot h))$$
+
+hence
+
+$$ \begin{pmatrix}\frac{\partial{E}}{\partial{a}} & \frac{\partial{E}}{\partial{b}} \\ 
+\frac{\partial{E}}{\partial{c}} & \frac{\partial{E}}{\partial{d}}\\
+\end{pmatrix} =  
+\begin{pmatrix}
+\sigma'(net_F) & 0 \\
+0 & \sigma'(net_G)\\
+\end{pmatrix} 
+\cdot 
+\begin{pmatrix}
+e & g \\
+f & h\\
+\end{pmatrix} 
+\cdot 
+\Bigg[
+2 \cdot 
+\begin{pmatrix}
+\sigma'(net_H) \cdot (H-t_1) \\
+\sigma'(net_I) \cdot (I-t_2) \\
+\end{pmatrix}
+\Bigg]
+\cdot 
+\begin{pmatrix}
+i_1 & i_2 & 1\\
+\end{pmatrix}
+$$ 
+
+Notice how the expression within aquare brackes was computed early before.
+
+Let's now generalize the above structure for any network.. 
+ 
+</br>
+</br>
+<h2>Contact/Questions:</h2>
+ &lt;my_github_account_username&gt;$@gmail.com$.
+</br>
+</br>
+</div>
+</body>
+</html>

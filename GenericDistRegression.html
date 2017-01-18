@@ -249,7 +249,7 @@ function GenerateDataSet(func)
     {
         x = i/50
         y = HammersleyRand(i)
-        setPoints.push([[x], [y],[1]])
+        setPoints.push([[x], [y]])
         setTarget.push([[func(x, y)]])
     }
 }
@@ -304,6 +304,12 @@ function UpdateWeights(m1,m2, learningRate)
 
 //-------------------------------
 
+// this helps taking care of the bias
+function AddBiasOneT(vector)
+{
+    return vector.concat([[1]]);
+}
+
 function DrawDecisionBoundary(gfx, tx,ty, size)
 {    
     var canvasData = gfx.context.getImageData(0, 0, size, size);
@@ -317,8 +323,9 @@ function DrawDecisionBoundary(gfx, tx,ty, size)
             var xx = gfx.InvViewportX(x);
             var yy = gfx.InvViewportY(y);
 
-            var net1 = MulMat(wl_i1, [[xx],[yy],[1]]);
-            var o1   = funcMat(Act, net1);
+            var o0   = AddBiasOneT([[xx],[yy]]);
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
             var net2 = MulMat(wl_12, o1); 
             var o2   = funcMat(Act, net2);
 
@@ -334,8 +341,8 @@ function DrawDecisionBoundary(gfx, tx,ty, size)
 }
 //-------------------------------
 
-var wl_i1 = RandomMat(3,4);  //read from 3, ilayer is 4
-var wl_12 = RandomMat(4,1);
+var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4
+var wl_12 = RandomMat(4+1,1);
 
 var iterations = 0;
 var oldFitness=1000;
@@ -357,9 +364,9 @@ function iterate()
         {       
             //forward pass
             //            
-            var o0   = setPoints[i];
+            var o0   = AddBiasOneT(setPoints[i]);
             var net1 = MulMat(wl_i1, o0);
-            var o1   = funcMat(Act, net1);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
             var net2 = MulMat(wl_12, o1); 
             var o2   = funcMat(Act, net2);
 
@@ -446,8 +453,8 @@ function changeFunction(func)
     gfxAE.DrawAxis();
 
     iterations = 0;
-    wl_i1 = RandomMat(3,4);  //read from 3, ilayer is 4
-    wl_12 = RandomMat(4,1);
+    wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4
+    wl_12 = RandomMat(4+1,1);
     GenerateDataSet(func);
 }
 </script>
