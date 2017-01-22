@@ -177,9 +177,12 @@ function GraphAxis()
 }
 
 // this helps taking care of the bias
-function AddBiasOneT(vector)
+function AddBiasOneT(vin)
 {
-    return vector.concat([[1]]);
+    var vout = [].concat(vin);
+    
+    vout.push( Array(vout[0].length).fill(1) );
+    return vout;   
 }
 
 
@@ -217,26 +220,24 @@ function DrawDecisionBoundary(tx,ty, size)
 var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4, the +1 is because of the bias
 var wl_12 = RandomMat(4+1,1);
 
-/*
-wl_i1 = TransposeMat([[-0.16595599,  0.44064899, -0.99977125, -0.39533485],
-         [-0.70648822, -0.81532281, -0.62747958, -0.30887855],
-         [-0.20646505,  0.07763347, -0.16161097,  0.370439  ]]);
 
-wl_12 = TransposeMat([[-0.5910955 ],
-         [ 0.75623487],
-         [-0.94522481],
-         [ 0.34093502]]);
-*/
+wl_i1 = [[0.5500415125099475,0.34223643405881077,-1.2034925011807243],
+[-0.651979536696215,-0.3867387803685895,0.2503980251604835],
+[0.5168067923702335,-0.09574359703469258,0.34764173337111043],
+[-0.39519777076325596,0.541596587090905,0.6337137535730695]];
+
+wl_12 = [[-0.5755788563493242,0.419465060363424,-0.09365205457202973,-0.21797451408272026,0.1857028329993429]]
+
+var il    = [ [ 0,0 ], [ 0,1 ], [ 1,0 ] , [ 1,1 ] ];   //input
+var t     = [ [ 0 ], [ 1 ], [ 1 ], [ 0 ] ];   //target
 
 var iterations = 0;
 var oldFitness=1000;
 var curFitness=1000;
+var learningRate = 1;
+
 function iterate()
 {
-    var il    = [ [ [0],[0] ], [ [0],[1] ], [ [1],[0] ] , [ [1],[1] ] ];   //input
-    var t     = [ [ [0] ], [ [1] ], [ [1] ], [ [0] ] ];   //target
-
-    var learningRate = 1;
     var err;
     var fitness=100;
     
@@ -253,7 +254,8 @@ function iterate()
         {       
             //forward pass
             //            
-            var o0   = AddBiasOneT(il[i]);
+
+            var o0   = AddBiasOneT(TransposeMat([il[i]]));
             var net1 = MulMat(wl_i1, o0);
             var o1   = AddBiasOneT(funcMat(Act, net1));
             var net2 = MulMat(wl_12, o1); 
@@ -261,7 +263,7 @@ function iterate()
 
             netResponses[i] = o2;
 
-            err = SubMat(o2, t[i]);
+            err = SubMat(o2, TransposeMat([t[i]]));
             
             //back propagate
             //

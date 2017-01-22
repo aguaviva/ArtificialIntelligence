@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Neural network back prop, with matrix fomulation</title>
+<script type="text/javascript"
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<style type="text/css">
+<!--
+body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+-->
+</style>
+</head>
+<script>
+
+function RandomMat(inp,neurons)
+{
+    var L = []
+    for(var i=0;i<neurons;i++)
+    {
+        L[i] = [];
+        for(var j=0;j<inp;j++)
+        {
+            L[i].push(2*Math.random()-1);
+        }
+    }
+    return L;
+}
+
+function PrintMat(m)
+{
+
+    var str = "[";
+    for(var j=0;j<m.length;j++)
+    {
+        str += "[" + m[j].join(",") + "]";
+    }
+    str += "]";
+    return str;
+}
+
+function MulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m2[0].length;i++)        
+        {
+            var tmp=0;
+            for(var k=0;k<m1[0].length;k++)
+            {
+                tmp += (m1[j][k] * m2[k][i]);
+            }
+            O[j].push( tmp);
+        }
+    }
+    return O;  
+}
+
+
+function TransposeMat(m)
+{
+    var O = [];        
+    for(var j=0;j<m[0].length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m.length;i++)        
+        {
+            O[j][i] = m[i][j];
+        }
+    }
+    return O;
+}
+
+function AddMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] + m2[j][i];
+        }
+    }
+    return O;
+}
+
+function SimpleMulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] * m2[j][i];
+        }
+    }
+    return O;
+}
+
+
+function SubMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] - m2[j][i];
+        }
+    }
+    return O;
+}
+
+function Act(x)
+{
+    return 1.0/(1.0+Math.exp(-x));
+}
+
+function DerAct(x)
+{
+    return Act(x)*(1-Act(x));
+}
+
+
+function funcMat(func, m )
+{
+    var O = [];        
+    for(var j=0;j<m.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m[0].length;i++)        
+        {
+            O[j][i] = func(m[j][i]);
+        }
+    }
+    return O;
+}
+
+function UpdateWeights(m1,m2, learningRate)
+{
+    for(var i=0;i<m1.length;i++)
+    {
+        for(var j=0;j<m1[0].length;j++)
+        {
+            m1[i][j] += learningRate * m2[i][j];
+        }
+    }
+}
+
+//-------------------------------
+
+function GraphAxis()
+{
+    context.beginPath();
+    context.strokeStyle="#000000";    
+    context.moveTo(0,300-20); 
+    context.lineTo(600,300-20);
+    context.moveTo(20,0); 
+    context.lineTo(20,300);
+    context.closePath();
+    context.stroke(); 
+}
+
+// this helps taking care of the bias by adding a 1 at the end of the vector
+function AddBiasOneT(vin)
+{
+    var vout = [].concat(vin);    
+    vout.push( Array(vout[0].length).fill(1) );
+    return vout;   
+}
+
+function DrawDecisionBoundary(tx,ty, size)
+{    
+    var canvasData = context.getImageData(0, 0, size, size);
+    
+    for(var y=0;y<size;y++)
+    {
+        for(var x=0;x<size;x++)
+        {
+            var index = (x + y * size) * 4;
+
+            xx = x/size
+            yy = 1-y/size
+
+            var o0   = AddBiasOneT(TransposeMat([[xx,yy]]));
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            v = o2[0][0]>.5?255:0;
+
+            canvasData.data[index + 0] = v;
+            canvasData.data[index + 1] = 255-v;
+            canvasData.data[index + 2] = 0;
+            canvasData.data[index + 3] = 128;
+        }
+    }
+    context.putImageData(canvasData, tx, ty);    
+}
+//-------------------------------
+
+var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4, the +1 is because of the bias
+var wl_12 = RandomMat(4+1,1);
+
+
+wl_i1 = [[0.5500415125099475,0.34223643405881077,-1.2034925011807243],
+[-0.651979536696215,-0.3867387803685895,0.2503980251604835],
+[0.5168067923702335,-0.09574359703469258,0.34764173337111043],
+[-0.39519777076325596,0.541596587090905,0.6337137535730695]];
+
+wl_12 = [[-0.5755788563493242,0.419465060363424,-0.09365205457202973,-0.21797451408272026,0.1857028329993429]]
+
+var il    = [ [ 0,0 ], [ 0,1 ], [ 1,0 ] , [ 1,1 ] ];   //input
+var t     = [ [ 0 ], [ 1 ], [ 1 ], [ 0 ] ];   //target
+
+var iterations = 0;
+var oldFitness=1000;
+var curFitness=1000;
+var learningRate = 1;
+var BatchSize = 2;
+
+function iterate()
+{
+    iterations++;
+    
+    var totalErr;
+    
+    for(var j=0;j<il.length;j+=BatchSize)
+    {
+        totalErr = 0;
+
+        //forward pass
+        //            
+        var o0   = AddBiasOneT(TransposeMat(il.slice(j,j+BatchSize)));
+        var net1 = MulMat(wl_i1, o0);
+        var o1   = AddBiasOneT(funcMat(Act, net1));
+        var net2 = MulMat(wl_12, o1); 
+        var o2   = funcMat(Act, net2);
+
+        var err = SubMat(o2, TransposeMat(t.slice(j,j+BatchSize)));
+        
+        //back propagate
+        //
+        
+        // outer layer
+        var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
+        var e2   = MulMat(sp2, TransposeMat(o1));
+        
+        // inner layer
+        var wsp2   = MulMat(TransposeMat(wl_12), sp2);
+        var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);                  
+        var e1   = MulMat(sp1, TransposeMat(o0));
+        
+        //update weights
+        UpdateWeights(wl_12, e2, -learningRate);           
+        UpdateWeights(wl_i1, e1, -learningRate);        
+        
+        totalErr += MulMat( err, TransposeMat(err))[0][0];        
+    }    
+    
+    DrawDecisionBoundary(600-100-10,10, 100)
+    
+    oldFitness = curFitness;    
+    curFitness = totalErr;
+
+    context.beginPath();
+    context.strokeStyle="#ff0000";    
+    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20); 
+    context.lineTo((iterations)/10+20,300-curFitness*300-20);
+    context.closePath();
+    context.stroke();        
+    
+    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
+    
+    document.getElementById("text").innerHTML += " <br> "
+}
+
+function init()
+{
+    var myCanvas = document.getElementById("myCanvas");
+    context = myCanvas.getContext('2d');
+    context.clearRect(0,0,600,300);
+    GraphAxis();
+    setInterval(iterate,1); 
+}
+</script>
+
+
+<body onload="init()">
+<h1>Neural network back prop using simple gradient descent, with matrix fomulation + bias + minibatch</h1>
+<div id="container">
+	
+<canvas id="myCanvas" width="600" height="300"></canvas>
+
+<div id="text"></div>
+
+<h2>Intro</h2>
+
+<p>In the previous sample only the input layer uses a bias. The bias was handled by conveniently appending a 1 to the input vector.</p>
+<p>Now we'll see what do we need to do to add a bias term to every layer</p>
+For impatients:
+<ul>
+<li>All you need to do is to append a 1 to the vector output by a layer, and there you go.</li>
+<li>The weight matrices wont be 2x2 but will be 3x2</li>
+</ul>
+Now the details:
+
+This sample uses a 2x4x1 NN to compute learn xor operation. 
+<br>
+Added batching. 
+</br>
+</br>
+<h2>Contact/Questions:</h2>
+ &lt;my_github_account_username&gt;$@gmail.com$.
+</br>
+</br>
+</div>
+</body>
+</html>
