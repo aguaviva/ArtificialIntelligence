@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>Neural network back prop, with matrix fomulation</title>
+<script type="text/javascript"
+  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+</script>
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
+</script>
+<style type="text/css">
+<!--
+body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
+h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:600px; margin:0 auto; }
+#myCanvas { background:#fff; border:1px solid #cbcbcb; }
+#nav { display:block; width:100%; text-align:center; }
+#nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
+#nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
+-->
+</style>
+</head>
+<script>
+
+function RandomMat(inp,neurons)
+{
+    var L = []
+    for(var i=0;i<neurons;i++)
+    {
+        L[i] = [];
+        for(var j=0;j<inp;j++)
+        {
+            L[i].push(2*Math.random()-1);
+        }
+    }
+    return L;
+}
+
+function PrintMat(m)
+{
+    var str = "[\n";
+    for(var j=0;j<m.length;j++)
+    {
+        str += "[" + m[j].join(",") + "]\n";
+    }
+    str += "]";
+    return str;
+}
+
+function MatId(dim)
+{
+    var O = [];        
+    for(var i=0;i<dim;i++)
+    {
+        O[i] = Array(dim).fill(0);
+        O[i][i] = 1;
+    }    
+    return O;  
+}
+
+function MulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m2[0].length;i++)        
+        {
+            var tmp=0;
+            for(var k=0;k<m1[0].length;k++)
+            {
+                tmp += (m1[j][k] * m2[k][i]);
+            }
+            O[j].push( tmp);
+        }
+    }
+    return O;  
+}
+
+function TransposeMat(m)
+{
+    var O = [];        
+    for(var j=0;j<m[0].length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m.length;i++)        
+        {
+            O[j][i] = m[i][j];
+        }
+    }
+    return O;
+}
+
+function AddMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] + m2[j][i];
+        }
+    }
+    return O;
+}
+
+function SimpleMulMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] * m2[j][i];
+        }
+    }
+    return O;
+}
+
+
+function SubMat(m1, m2)
+{
+    var O = [];        
+    for(var j=0;j<m1.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m1[0].length;i++)        
+        {
+            O[j][i] = m1[j][i] - m2[j][i];
+        }
+    }
+    return O;
+}
+
+function Square(v)
+{
+    return MulMat(v, TransposeMat(v))
+}
+
+//--------------------------------------------------------
+
+function Act(x)
+{
+    return x;//1.0/(1.0+Math.exp(-x));
+}
+
+function DerAct(x)
+{
+    return 1;//Act(x)*(1-Act(x));
+}
+function funcMat(func, m )
+{
+    var O = [];        
+    for(var j=0;j<m.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m[0].length;i++)        
+        {
+            O[j][i] = func(m[j][i]);
+        }
+    }
+    return O;
+}
+
+//--------------------------------------------------------
+
+function UpdateWeights(m1,m2, learningRate)
+{
+    for(var i=0;i<m1.length;i++)
+    {
+        for(var j=0;j<m1[0].length;j++)
+        {
+            m1[i][j] += learningRate * m2[i][j];
+        }
+    }
+}
+
+//-------------------------------
+
+function GraphAxis()
+{
+    context.beginPath();
+    context.strokeStyle="#000000";    
+    context.moveTo(0,300-20); 
+    context.lineTo(600,300-20);
+    context.moveTo(20,0); 
+    context.lineTo(20,300);
+    context.closePath();
+    context.stroke(); 
+}
+
+// this helps taking care of the bias
+function AddBiasOneT(vin)
+{
+    var vout = [].concat(vin);
+    
+    vout.push( Array(vout[0].length).fill(1) );
+    return vout;   
+}
+
+function DrawDecisionBoundary(tx,ty, size)
+{    
+    var canvasData = context.getImageData(0, 0, size, size);
+    
+    for(var y=0;y<size;y++)
+    {
+        for(var x=0;x<size;x++)
+        {
+            var index = (x + y * size) * 4;
+
+            xx = x/size
+            yy = 1-y/size
+
+            var o0   = AddBiasOneT([[xx],[yy]]);
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            v = o2[0][0]>.5?255:0;
+
+            canvasData.data[index + 0] = v;
+            canvasData.data[index + 1] = 255-v;
+            canvasData.data[index + 2] = 0;
+            canvasData.data[index + 3] = 128;
+        }
+    }
+    context.putImageData(canvasData, tx, ty);    
+}
+
+//-------------------------------
+
+var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4, the +1 is because of the bias
+var wl_12 = RandomMat(4+1,1);
+
+//-------------------------------------------------  Conv Net layer 1D
+
+function GetSlice(input, offset, count)
+{
+    //center kernel
+    return input.slice(offset, offset + count).concat([1]);    
+}
+
+function ConvGetPadding(convWeights)
+{
+    return ((convWeights.length -1)-1);
+}
+
+function ConvForwardNetOffset( convWeights, input, offset)
+{
+    var res = 0;
+    
+    slice = GetSlice(input, offset, convWeights.length-1)
+    
+    for(var j=0;j<slice.length;j++)
+    {
+        res += convWeights[j] * slice[j];
+    }
+    
+    return res;
+}
+
+function ConvForward(convWeights, input)
+{
+    var out = [];
+    
+    var padding = ConvGetPadding(convWeights);
+    
+    for(var i=0;i<input.length - padding;i++)
+    {
+        var res = ConvForwardNetOffset(convWeights, input, i);
+        out.push(Act(res));
+    }
+    return [out];
+}
+
+function ConvBackProp( convWeights, prevWeights, input)
+{
+    var mat = [];
+        
+    var padding = ConvGetPadding(convWeights);
+    
+    for(var i=0;i<input.length - padding;i++)
+    {
+        var row = GetSlice(input, i, convWeights.length-1);
+
+        var o_i = DerAct(ConvForwardNetOffset(convWeights, input, i));
+        
+        for(var j=0;j<row.length;j++)
+            row[j] *= o_i;
+        
+        mat.push(row)
+    }
+    
+    //return MulMat(TransposeMat(prevWeights), mat);    
+    return MulMat(prevWeights, mat);    
+}
+
+function ConvPadInput(input)
+{
+    return [0].concat(input).concat([0]);;
+}
+
+function ConvTest()
+{
+    convWeights = [0.1,0.2, .1, 1.0];
+    input = [1,2,3,4];
+    
+    input = ConvPadInput(input);
+    
+    target = [[1,9,9,1]]
+        
+    var numericalDerivatives = [];
+       
+    for(var i=0;i<convWeights.length;i++)
+    {
+        convWeights[i]+=.00001    
+        o1 = ConvForward(convWeights, input)    
+        errp = SubMat(o1, target)
+        err1 = Square(errp)
+        convWeights[i]-=.00001
+
+        o2 = ConvForward(convWeights, input)    
+        errv = SubMat(o2, target)
+        err2 = Square(errv)
+        
+        var res = MulMat([[1/.00001]], SubMat(err1, err2));
+        
+        numericalDerivatives.push(res[0][0])
+    }    
+    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
+    
+    //derivative
+    
+    id = MatId(input.length - ConvGetPadding(convWeights));
+    
+    var bp = ConvBackProp( convWeights, id, input);
+    var der = MulMat(MulMat([[2]],errv), bp);
+    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"    
+}
+
+
+//------------------------------------------------- Max Pool 1D
+
+class MaxPool1D
+{
+    constructor()
+    {
+    }
+    
+    forward(input)
+    {
+        this.max = []
+        output = []
+        for(var i=0;i<input.length;i+=2)
+        {
+            if (input[i]> input[i+1])
+            {
+                output[i/2]=input[i];
+                this.max[i]=1;
+                this.max[i+1]=0;
+            }
+            else (input[i]< input[i+1])
+            {
+                output[i/2]=input[i+1]
+                this.max[i]=0;
+                this.max[i+1]=1;
+            }
+            else
+            {
+                output[i/2]=input[i]
+                //kust pick a random one (the last one)
+                this.max[i]=0;
+                this.max[i+1]=1;
+            }    
+        }
+        
+        return output;
+    }
+    
+    backward(input)
+    {
+        return this.max;    
+    }
+    
+}
+
+function MaxPool1DMat(input)
+{
+    var out = [];
+    for(var i=0;i<input.length;i+=2)
+    {
+        var row = Array(input.length).fill(0);
+
+        if (input[i]> input[i+1])
+            row[i]=1
+        else if (input[i] < input[i+1])
+            row[i+1]=1
+        else
+        {
+            row[i]=.5;
+            row[i+1]=.5;
+        }
+
+        out[i/2] = row    
+    }
+    
+    return out;
+}
+
+function MaxPool1DForward(input)
+{
+    var out = [];
+    for(var i=0;i<input.length;i+=2)
+    {
+        out.push( Math.max(input[i],input[i+1]))
+    }
+    
+    return [out]
+}
+
+function MaxPool1DBackProp(input)
+{
+    var out = [];
+    
+    for(var i=0;i<input.length;i+=2)
+    {
+        var max = Math.max(input[i],input[i+1]);
+        for(var j=0;j<2;j++)
+        {
+            if (input[i+j]==max)
+                out.push(1);
+            else
+                out.push(0);
+        }
+    }
+    
+    return [out]
+}
+
+function MaxPool1DTest()
+{
+    input = [1,2,3,3];
+    target = [2,4]
+    for(var i=0;i<input.length;i++)
+    {
+        input[i]+=.00001    
+        var o1 = MaxPool1DForward(input);
+        input[i]-=.00001    
+        var o2 = MaxPool1DForward(input);
+        
+        var res = MulMat([[1/.00001]], SubMat(o1, o2))
+
+        document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"
+    }
+    
+    var res = MaxPool1DBackProp(input)
+    
+    document.getElementById("text").innerHTML += "<pre>BackProp\n"+PrintMat(res)+"</pre>"
+}
+
+
+//------------------------------------------ test conv & maxpool
+
+function ConvMaxPoolTest()
+{
+    convWeights = [1,2, 1, 1.0];
+    input = [2,1,3,4];
+    
+    input = ConvPadInput(input);
+    
+    target = [[1,1]]
+    
+    var numericalDerivatives = [];
+
+    for(var i=0;i<convWeights.length;i++)
+    {
+        convWeights[i]+=.00001    
+        o1 = ConvForward(convWeights, input)    
+        mp1 = MaxPool1DMat(o1[0]);       
+        op1 = MulMat(o1, TransposeMat(mp1) );
+        errp = SubMat(op1, target)
+        err1 = Square(errp)
+        convWeights[i]-=.00001
+
+        o2 = ConvForward(convWeights, input)    
+        mp2 = MaxPool1DMat(o2[0]);       
+        op2 = MulMat(o2, TransposeMat(mp2) );
+        errv = SubMat(op2, target)
+        err2 = Square(errv)
+        
+        var res = MulMat([[1/.00001]], SubMat(err1, err2));
+        
+        numericalDerivatives.push(res[0][0])
+    }    
+
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
+
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(o2)+"</pre>"    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(mp2)+"</pre>"    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(op2)+"</pre>"    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(errv)+"</pre>"    
+
+    //derivative
+       
+    id = MaxPool1DMat(o2[0]);
+    var bp = ConvBackProp( convWeights, id, input);
+    var der = MulMat(MulMat([[2]],errv), bp);
+    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"    
+
+}
+
+
+
+wl_i1 = [[0.5500415125099475,0.34223643405881077,-1.2034925011807243],
+[-0.651979536696215,-0.3867387803685895,0.2503980251604835],
+[0.5168067923702335,-0.09574359703469258,0.34764173337111043],
+[-0.39519777076325596,0.541596587090905,0.6337137535730695]];
+
+wl_12 = [[-0.5755788563493242,0.419465060363424,-0.09365205457202973,-0.21797451408272026,0.1857028329993429]]
+
+var il    = [ [ 0,0,0,0 ], [ 0,1,0,0 ], [ 1,0,0,0 ] , [ 1,1,0,0 ] ];   //input
+var t     = [ [ 0 ], [ 1 ], [ 1 ], [ 0 ] ];   //target
+
+var iterations = 0;
+var oldFitness=1000;
+var curFitness=1000;
+var learningRate = 1;
+
+function iterate()
+{
+    var err;
+    var fitness=100;
+    
+    iterations++;
+    
+    var totalErr;
+    
+    var netResponses = []
+    
+    for(var j=0;j<1;j++)
+    {
+        totalErr = 0;
+        for(var i=0;i<4;i++)
+        {       
+            //forward pass
+            //            
+            
+            var o0   = AddBiasOneT(TransposeMat([il[i]]));
+            var net1 = MulMat(wl_i1, o0);
+            var o1   = AddBiasOneT(funcMat(Act, net1));
+            var net2 = MulMat(wl_12, o1); 
+            var o2   = funcMat(Act, net2);
+
+            netResponses[i] = o2;
+
+            err = SubMat(o2, TransposeMat([t[i]]));
+            
+            //back propagate
+            //
+            
+            // outer layer
+            var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
+            var e2   = MulMat(sp2, TransposeMat(o1));
+            
+            // inner layer
+            var wsp2   = MulMat(TransposeMat(wl_12), sp2);
+            var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);                  
+            var e1   = MulMat(sp1, TransposeMat(o0));
+            
+            //update weights
+            UpdateWeights(wl_12, e2, -learningRate);           
+            UpdateWeights(wl_i1, e1, -learningRate);        
+            
+            totalErr += MulMat( err, TransposeMat(err))[0][0];
+        }
+        
+    }    
+    
+    DrawDecisionBoundary(600-100-10,10, 100)
+    
+    oldFitness = curFitness;    
+    curFitness = totalErr;
+
+    context.beginPath();
+    context.strokeStyle="#ff0000";    
+    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20); 
+    context.lineTo((iterations)/10+20,300-curFitness*300-20);
+    context.closePath();
+    context.stroke();        
+    
+    document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
+    
+    document.getElementById("text").innerHTML += " <br> "
+    
+    for(var i=0;i<4;i++)
+    {
+        document.getElementById("text").innerHTML += il[i][0]+" xor "
+        document.getElementById("text").innerHTML += il[i][1]+" = "
+        document.getElementById("text").innerHTML += netResponses[i]+"<br>"
+    }
+    
+}
+
+function init()
+{
+
+    var myCanvas = document.getElementById("myCanvas");
+    context = myCanvas.getContext('2d');
+    context.clearRect(0,0,600,300);
+    GraphAxis();
+    //setInterval(iterate,10); 
+    ConvTest()
+    //MaxPool1DTest()
+    ConvMaxPoolTest()
+}
+</script>
+
+<body onload="init()">
+<h1>Neural network back prop using simple gradient descent, with matrix fomulation + bias for each layer</h1>
+<div id="container">
+	
+<canvas id="myCanvas" width="600" height="300"></canvas>
+
+Let's consider a simple conv network and lets compute how to do back propagation on it. </br>
+</br>
+<div style="text-align:center;">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="281px" version="1.1" content="&lt;mxfile userAgent=&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/54.0.2840.71 Safari/537.36&quot; version=&quot;6.0.2.14&quot; editor=&quot;www.draw.io&quot; type=&quot;device&quot;&gt;&lt;diagram name=&quot;Page-1&quot;&gt;7VnNk5sgHP1rPLajErN63KTb9tBOO5ND21OHCCqzRDJIvvrXFyMkCia1zeqYtnvYkQf8gPcen3HAfLV/x+E6+8gQpo7vor0D3ji+H3mh/F8Chwrw3SiokJQTVGHeGViQH1iBrkI3BOGiUVAwRgVZN8GY5TmORQODnLNds1jCaLPVNUyxBSxiSG30C0Eiq9AwcM/4e0zSTLfsuSpnCePnlLNNrtpzfJAc/6rsFdSxVPkig4jtahB4csCcMyaqr9V+jmnJraatqvf2Qu6p3xznoksFv6qwhXSDdY+P/RIHzYWsIGmXidkuIwIv1jAuc3ZSeYllYkVlypOfKhTmAu8vdsc7DVKaB7MVFvwgi6gKIFS8KOO8ijxlnN1Zhokqk9UU0BhUwqen0OfByw81/nYugMUF+e74UyqbmBVrmMvvtPz2NSgD1nGLuf758qcGX+HDcHxNLL7cUVAAhqMgGCcFUTAcBdOWWeONgoQBl46HkS+jQy4LYQcucvRY7tIyFVNYFCRuUiCHyQ9fZcLViW9l4nUgkwmhdM4o48dQAEEcJmX1QnD2jGs50zjEy+REKEbWlt+ZTteks2V+BS10BlfoVK19ZkR24kpT2sU6RsE2PMaqWn1nNyNZHgiMSALyFAsr0lHfEwmdJI/+Acmj4SQ3hfpzyaPeJNcn9YE0T8IYx62aL8NgEriXNa+G3Djt3mCDqGUh7ckGEXgpG5w63YMNvDuxwS2atxwo+5r65oQd42rvdbk0/kJzc0kPcIgmbbqG/hJMp/91HWJJty/Ad6nrfW7VPc5X+6I+Z/lWv2IgstUvGB/gAfPa60Ytq6W0hpbcRMyqhonkxUY0bdO0R85ybHhJQZCSNC+9J70hewpm5TWJxJA+qowVQYheumQ5PdysPLfjNdO/4rauVyvPfm940d325rk48U1b93ZespsyY3Sdi4E1q3s8L9nPJSNXsO0ZpS8Fo3tQcGRvPfbYW7a/vt56PPux59NGrDfidzeXv2eHsPToc4eQyfNvRZWZzz/Igaef&lt;/diagram&gt;&lt;/mxfile&gt;" onclick="(function(svg){var src=window.event.target||window.event.srcElement;while (src!=null&amp;&amp;src.nodeName.toLowerCase()!='a'){src=src.parentNode;}if(src==null){if(svg.wnd!=null&amp;&amp;!svg.wnd.closed){svg.wnd.focus();}else{var r=function(evt){if(evt.data=='ready'&amp;&amp;evt.source==svg.wnd){svg.wnd.postMessage(decodeURIComponent(svg.getAttribute('content')),'*');window.removeEventListener('message',r);}};window.addEventListener('message',r);svg.wnd=window.open('https://www.draw.io/?client=1&amp;lightbox=1&amp;chrome=0&amp;edit=_blank');}}})(this);" viewBox="0 0 281 231" style="cursor:pointer;max-width:100%;max-height:231px;"><defs/><g transform="translate(0.5,0.5)"><ellipse cx="140" cy="130" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><rect x="0" y="150" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,163.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_<span>2</span></div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">[Not supported by viewer]</text></switch></g><rect x="0" y="190" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(16.5,203.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="7" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 8px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">0</div></div></foreignObject><text x="4" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">0</text></switch></g><rect x="0" y="70" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(16.5,83.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="7" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 8px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">0</div></div></foreignObject><text x="4" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">0</text></switch></g><rect x="0" y="110" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,123.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_1</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">i_1</text></switch></g><ellipse cx="140" cy="170" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><path d="M 40 210 L 114.3 172.85" fill="none" stroke="#6c8ebf" stroke-miterlimit="10" pointer-events="none"/><path d="M 119 170.5 L 114.3 176.76 L 114.3 172.85 L 111.17 170.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 170 L 114.3 132.85" fill="none" stroke="#6c8ebf" stroke-miterlimit="10" pointer-events="none"/><path d="M 119 130.5 L 114.3 136.76 L 114.3 132.85 L 111.17 130.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 90 L 114.3 127.15" fill="none" stroke="#b85450" stroke-miterlimit="10" pointer-events="none"/><path d="M 119 129.5 L 111.17 129.5 L 114.3 127.15 L 114.3 123.24 Z" fill="#b85450" stroke="#b85450" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 130 L 114.3 167.15" fill="none" stroke="#b85450" stroke-miterlimit="10" pointer-events="none"/><path d="M 119 169.5 L 111.17 169.5 L 114.3 167.15 L 114.3 163.24 Z" fill="#b85450" stroke="#b85450" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 130 L 113.63 130" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="none"/><path d="M 118.88 130 L 111.88 133.5 L 113.63 130 L 111.88 126.5 Z" fill="#82b366" stroke="#82b366" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 170 L 113.63 170" fill="none" stroke="#82b366" stroke-miterlimit="10" pointer-events="none"/><path d="M 118.88 170 L 111.88 173.5 L 113.63 170 L 111.88 166.5 Z" fill="#82b366" stroke="#82b366" stroke-miterlimit="10" pointer-events="none"/><g transform="translate(124.5,-0.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="30" height="40" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 31px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Conv<div>Layer</div><div><br /></div></div></div></foreignObject><text x="15" y="26" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">[Not supported by viewer]</text></switch></g><path d="M 160 175 L 233.92 151.9" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/><path d="M 238.93 150.33 L 233.3 155.76 L 233.92 151.9 L 231.21 149.08 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/><path d="M 160 135 L 233.74 148.83" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/><path d="M 238.9 149.79 L 231.38 151.94 L 233.74 148.83 L 232.67 145.06 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/><ellipse cx="260" cy="150" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(241.5,6.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="36" height="26" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 37px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Output<div>Layer</div></div></div></foreignObject><text x="18" y="19" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">[Not supported by viewer]</text></switch></g></g></svg>
+</div>
+<p>Let's consider the following weights:</p>
+<ul>
+<li>Conv layer: (a,b,c, d) (being that d for the bias term)</li>
+<li>Output layer : (e, f, g) Again the g is the bias</li>
+</ul>
+For the convolutions layer we have that: 
+$$\begin{align*} 
+Cv_1 &= \sigma(net_{Cv1}) &= \sigma(a\cdot 0 + b\cdot i_1 + c\cdot i_2 + d) \\
+Cv_2 &= \sigma(net_{Cv2}) &= \sigma(a\cdot i_1 + b\cdot i_2 + c\cdot 0 + d) \\
+\end{align*}$$
+
+And for the output layer:
+$$\begin{align*} 
+O &= \sigma(net_O) &= \sigma(e\cdot Cv_1+f\cdot Cv_2 + g) 
+\end{align*}$$
+
+The derivatives with respect to $a$,$b$,$c$ and $d$ of the Conv layer are:
+
+$$\frac{\partial{Cv_1}}{\partial{a}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{a}} = \sigma'(net_{Cv1}) 0 $$
+$$\frac{\partial{Cv_1}}{\partial{b}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{b}} = \sigma'(net_{Cv1}) i_1 $$
+$$\frac{\partial{Cv_1}}{\partial{c}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{c}} = \sigma'(net_{Cv1}) i_2 $$
+$$\frac{\partial{Cv_1}}{\partial{d}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{d}} = \sigma'(net_{Cv1}) 1 $$
+
+Or in matrix formulation:
+
+$$ \begin{pmatrix} \frac{\partial{Cv_1}}{\partial{a}} & \frac{\partial{Cv_1}}{\partial{b}} & \frac{\partial{Cv_1}}{\partial{c}} & \frac{\partial{Cv_1}}{\partial{d}} \end{pmatrix} = \sigma'(net_{Cv1}) \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1\end{pmatrix}$$
+
+$$ \begin{pmatrix} \frac{\partial{Cv_2}}{\partial{a}} & \frac{\partial{Cv_2}}{\partial{b}} & \frac{\partial{Cv_2}}{\partial{c}} & \frac{\partial{Cv_2}}{\partial{d}} \end{pmatrix} = \sigma'(net_{Cv2}) \cdot \begin{pmatrix} i_2 & i_1 & 0 & 1\end{pmatrix}$$
+
+And the derivatives of the output layer are:
+
+$$\frac{\partial{O}}{\partial{a}}  = \sigma'(net_O) \cdot (e\cdot \frac{\partial{Cv_1}}{\partial{a}}+f\cdot \frac{\partial{Cv_2}}{\partial{a}} ) = \sigma'(net_O) \cdot \begin{pmatrix} e & f\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 \\ i_1 \end{pmatrix}$$
+
+Doing the same for all the weights:
+
+$$\begin{pmatrix}  \frac{\partial{O}}{\partial{a}}  & \frac{\partial{O}}{\partial{b}}  & \frac{\partial{O}}{\partial{c}}  & \frac{\partial{O}}{\partial{d}}  \end{pmatrix} =  \sigma'(net_O) \cdot \begin{pmatrix} e & f\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & 0 & 1\end{pmatrix}$$
+
+
+Now, let's use a maxpool neuron instead of a regular neuron, we have that:
+
+$$O = max(Cv_1, Cv_2) $$
+
+Writing the above in terms of our previous output neuron ($O = \sigma(e\cdot Cv_1+f\cdot Cv_2 + g)$) we'd have that: </br>
+</br>
+<ul>
+<li>if $Cv_1 > Cv_2$ our output neuron would be $O = \sigma(1\cdot Cv_1+0\cdot Cv_2 + 0)$ hence:
+
+$$\begin{pmatrix}  \frac{\partial{O}}{\partial{a}}  & \frac{\partial{O}}{\partial{b}}  & \frac{\partial{O}}{\partial{c}}  & \frac{\partial{O}}{\partial{d}}  \end{pmatrix} =  \sigma'(net_O) \cdot \begin{pmatrix} 1 & 0\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & 0 & 1\end{pmatrix}$$
+</li>
+<li>if $Cv_1 < Cv_2$ our output neuron would be $O=\sigma(0\cdot Cv_1+1\cdot Cv_2 + 0)$ then: 
+
+$$\begin{pmatrix}  \frac{\partial{O}}{\partial{a}}  & \frac{\partial{O}}{\partial{b}}  & \frac{\partial{O}}{\partial{c}}  & \frac{\partial{O}}{\partial{d}}  \end{pmatrix} =  \sigma'(net_O) \cdot \begin{pmatrix} 0 & 1\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & 0 & 1\end{pmatrix}$$
+</li>
+</ul>
+Now lets complicate the network a bit more</br>
+
+</br>
+<div style="text-align:center;">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="281px" version="1.1" content="&lt;mxfile userAgent=&quot;Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.76 Safari/537.36&quot; version=&quot;6.0.3.0&quot; editor=&quot;www.draw.io&quot; type=&quot;device&quot;&gt;&lt;diagram name=&quot;Page-1&quot;&gt;3Vpbb5swFP41SN3LBBgS+riybnuZOqkP254mBxzC6uCIOLf9+jnFJoHjbC2NDUmlVPhgH+Pvs88NHBTPt59LvJh9ZSmhju+mWwd9dHw/HCPxfy/YVYLbcVAJsjJPK5F3EDzmf4gUulK6ylOybHTkjFGeL5rChBUFSXhDhsuSbZrdpow2Z13gjADBY4IplH7PUz6rpFHoHuRfSJ7N1MyeK+9McPKUlWxVyPkcH02f/6rbc6x0yf7LGU7Z5kiE7h0Ul4zx6mq+jQndQ6tgq8Z9OnG3fu6SFPwlA/xqwBrTFWk+GN8pMDaznJPHBU727Y3g20F3Mz6nouWJS6mBlJxsTz6FV69NbBnC5oSXO9FFDojkpHK3eOohNgfsAymaHcGuZFiyndWKDysWF3LRegAQACD/5Q0AgpE9CAINBH7/EPiuPQhCDQRoABAE9iAYaSAIBgBBZA+C8RCNIbJoDCMAAFg/KdIPewcrWgnFy2WeNAFY8pI91U4TCck0pzRmlJXPCtA0SkiS1D2P7kyiMBAeVoFIUuCj/wvhEUahBiMlKwnFPF831euAkzN8Y7mYuGao9k/KWAdhU8WSrcqEyFHH3relqDZxSlHUIpHjMiMcKHrmsV72i6i9tUBtikk01VI7SiIymb6J2hPY+5rj8S/qu7NczzRgllX8bJbmkERpoKM58idoNDJBs6dxA2ZoBuwMkWYYtsdrGLWKQSJhEo07814LrN5iAOvBID5eazZ+j3DYDGY9GNDHaxjN9gqHxcDWg8F9vIaRba9wWAxyPRjlPvR7VlDb0do0HUZCXmfgAWwNncox3I4+D1Bn0OcZiWAFH+Xuh2i4qvFz33gfvoJF361WeXy+hsJsfZZeHc3cthR5xphVe+hy087rCVpBknNGmj0LNPeSgmr8laEUtPNptkgzzE0M0NxDCnqBlQaTNMOc6zqMdv0y4IJobpuFM9IMc8nrMNpIk5CboblzcG2TZpgjX4nRvkDfbJBm+JLvSoz2yJrRPhfNwCyckWZY4rkSo60pGxoy2u3i0hBptvG6tg+jfYG+2STNsPD10O+7nnbVT1fnMPa9lpFi0Zu3MKi7GdvCYKauWQSo3ZrbwshI6adD7fa4UKvOVXeSzdX3Ts701jKuh8yR7AOSb4jjx1Pxy94BvoX54TqGlYcpWEFa7kiKMM2zYr9NBG1EyO/2xixPMP0gb8zzNKWnTOEZ7J8/boE6fpn9a5/UTvYP1l1ufguEn8SPXjXK9TE6P8qiefjkutr6h8/a0f1f&lt;/diagram&gt;&lt;/mxfile&gt;" onclick="(function(svg){var src=window.event.target||window.event.srcElement;while (src!=null&amp;&amp;src.nodeName.toLowerCase()!='a'){src=src.parentNode;}if(src==null){if(svg.wnd!=null&amp;&amp;!svg.wnd.closed){svg.wnd.focus();}else{var r=function(evt){if(evt.data=='ready'&amp;&amp;evt.source==svg.wnd){svg.wnd.postMessage(decodeURIComponent(svg.getAttribute('content')),'*');window.removeEventListener('message',r);}};window.addEventListener('message',r);svg.wnd=window.open('https://www.draw.io/?client=1&amp;lightbox=1&amp;chrome=0&amp;edit=_blank');}}})(this);" viewBox="0 0 281 241" style="cursor:pointer;max-width:100%;max-height:241px;"><defs/><g transform="translate(0.5,0.5)"><rect x="0" y="0" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(16.5,13.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="7" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 8px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">0</div></div></foreignObject><text x="4" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">0</text></switch></g><rect x="0" y="40" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,53.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_1</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">i_1</text></switch></g><rect x="0" y="80" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,93.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_2</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">i_2</text></switch></g><rect x="0" y="120" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,133.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_3</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">i_3</text></switch></g><rect x="0" y="160" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(11.5,173.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">i_4</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">i_4</text></switch></g><rect x="0" y="200" width="40" height="40" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(16.5,213.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="7" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 8px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">0</div></div></foreignObject><text x="4" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">0</text></switch></g><path d="M 40 25 L 110.74 55.95" fill="none" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 116.93 58.66 L 106.88 59.17 L 110.74 55.95 L 110.49 50.93 Z" fill="#b85450" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 100 L 110.96 64.52" fill="none" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 61.5 L 110.96 69.55 L 110.96 64.52 L 106.94 61.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 60 L 109.9 60" fill="none" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 116.65 60 L 107.65 64.5 L 109.9 60 L 107.65 55.5 Z" fill="#82b366" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><ellipse cx="140" cy="60" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(128.5,53.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="22" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 22px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Cv1</div></div></foreignObject><text x="11" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">Cv1</text></switch></g><ellipse cx="140" cy="100" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(128.5,93.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="22" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 22px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Cv2</div></div></foreignObject><text x="11" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">Cv2</text></switch></g><ellipse cx="140" cy="140" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(128.5,133.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="22" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 22px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Cv3</div></div></foreignObject><text x="11" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">Cv3</text></switch></g><ellipse cx="140" cy="180" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(128.5,173.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="22" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 22px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">Cv4</div></div></foreignObject><text x="11" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">Cv4</text></switch></g><ellipse cx="260" cy="160" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(251.5,153.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">O2</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">O2</text></switch></g><path d="M 160 180 L 230.2 162.45" fill="none" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 236.75 160.81 L 229.11 167.36 L 230.2 162.45 L 226.92 158.63 Z" fill="#000000" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 160 140 L 230.2 157.55" fill="none" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 236.75 159.19 L 226.92 161.37 L 230.2 157.55 L 229.11 152.64 Z" fill="#000000" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 60 L 110.96 95.48" fill="none" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 98.5 L 106.94 98.5 L 110.96 95.48 L 110.96 90.45 Z" fill="#b85450" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 140 L 110.96 104.52" fill="none" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 101.5 L 110.96 109.55 L 110.96 104.52 L 106.94 101.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 100 L 109.9 100" fill="none" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 116.65 100 L 107.65 104.5 L 109.9 100 L 107.65 95.5 Z" fill="#82b366" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 100 L 110.96 135.48" fill="none" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 138.5 L 106.94 138.5 L 110.96 135.48 L 110.96 130.45 Z" fill="#b85450" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 180 L 110.96 144.52" fill="none" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 141.5 L 110.96 149.55 L 110.96 144.52 L 106.94 141.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 140 L 109.9 140" fill="none" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 116.65 140 L 107.65 144.5 L 109.9 140 L 107.65 135.5 Z" fill="#82b366" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 140 L 110.96 175.48" fill="none" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 178.5 L 106.94 178.5 L 110.96 175.48 L 110.96 170.45 Z" fill="#b85450" stroke="#b85450" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 220 L 110.96 184.52" fill="none" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 117 181.5 L 110.96 189.55 L 110.96 184.52 L 106.94 181.5 Z" fill="#6c8ebf" stroke="#6c8ebf" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 40 180 L 109.9 180" fill="none" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 116.65 180 L 107.65 184.5 L 109.9 180 L 107.65 175.5 Z" fill="#82b366" stroke="#82b366" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><ellipse cx="260" cy="80" rx="20" ry="20" fill="#ffffff" stroke="#000000" pointer-events="none"/><g transform="translate(251.5,73.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="16" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 17px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">O1</div></div></foreignObject><text x="8" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">O1</text></switch></g><path d="M 160 100 L 230.2 82.45" fill="none" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 236.75 80.81 L 229.11 87.36 L 230.2 82.45 L 226.92 78.63 Z" fill="#000000" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 160 60 L 230.2 77.55" fill="none" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><path d="M 236.75 79.19 L 226.92 81.37 L 230.2 77.55 L 229.11 72.64 Z" fill="#000000" stroke="#000000" stroke-width="3" stroke-miterlimit="10" pointer-events="none"/><g transform="translate(193.5,53.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="32" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 32px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">(e,f,g)</div></div></foreignObject><text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">(e,f,g)</text></switch></g><g transform="translate(196.5,133.5)"><switch><foreignObject style="overflow:visible;" pointer-events="all" width="26" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility"><div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 27px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">(j,k,l)</div></div></foreignObject><text x="13" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">(j,k,l)</text></switch></g></g></svg>
+</div>
+</br></br>
+Let's compute how muc the error changes when we change to $a$, $b$, $c$ and $d$. Given a target value $T=\begin{pmatrix}t_1 & t_2 \end{pmatrix}$. the error of our networks would be:
+
+$$Err = (O-T)^2 = (O_1-t_1)^2 + (O_2-t_2)^2$$
+
+$$\frac{\partial{Err}}{\partial{a}} = 2(O_1-t_1)\frac{\partial{O_1}}{\partial{a}} + 2(O_2-t_2)\frac{\partial{O_2}}{\partial{a}}
+= 2\begin{pmatrix} (O_1-t_1) & (O_2-t_2) \end{pmatrix} \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix} 
+= 2(O - T) \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix} 
+$$
+
+Doing the same for all the conv weights:
+
+$$ \begin{pmatrix} \frac{\partial{Err}}{\partial{a}} & \frac{\partial{Err}}{\partial{b}} & \frac{\partial{Err}}{\partial{c}} & \frac{\partial{Err}}{\partial{d}} \end{pmatrix}
+= 2(O - T) \cdot 
+\begin{pmatrix}
+\frac{\partial{O_1}}{\partial{a}}  & \frac{\partial{O_1}}{\partial{b}}  & \frac{\partial{O_1}}{\partial{c}}  & \frac{\partial{O_1}}{\partial{d}}   \\
+\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}  
+\end{pmatrix} =
+$$
+
+Where, in matrix formulation we ahve that:
+
+$$ 
+= 2(O - T) \cdot 
+\begin{pmatrix} \sigma'(net_{O_1}) & 0 \\ 0 & \sigma'(net_{O_2}) \end{pmatrix}
+\begin{pmatrix} e & f & 0 & 0 \\ 0 & 0 & j & k \end{pmatrix}
+\begin{pmatrix} \sigma'(net_{Cv1}) & 0 & 0 & 0\\ 0 & \sigma'(net_{Cv2}) & 0 & 0\\ 0 & 0 & \sigma'(net_{Cv3}) & 0\\ 0 & 0 & 0 & \sigma'(net_{Cv4}) \end{pmatrix}
+\begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}
+
+$$ 
+
+if the output later was a max pool layer, our weights $e$, $f$, $j$ and $k$ would be:
+
+<ul>
+<li>if $Cv_1> Cv_2$ then $(e=1, f=0)$ else $(e=0, f=1)$</li>
+<li>if $Cv_3> Cv_4$ then $(j=1, k=0)$ else $(j=0, k=1)$</li>
+</ul>
+<div id="text"></div>
+
+If we want to use minibatching, let say we want to use the above funtion onto 2 inputs$(I[0], I[1])$, 2 outputs$(O[0], O[1])$ and 2 targets$(T[0], T[1])$ at a time, in the above expression:
+<ol>
+<li>$(O - T)$ would become $\begin{pmatrix} O[1]-T[1] \\O[2]-T[2]\end{pmatrix}$</li>
+<li>$\begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}$ should become 
+$\begin{pmatrix} 0 & i_1[0] & i_2[0] & 1 & 0 & i_1[1] & i_2[1] & 1\\ i_1[0] & i_2[0] & i_3[0] & 1 & i_1[1] & i_2[1] & i_3[1] & 1\\ i_2[0] & i_3[0] & i_4[0] & 1 & i_2[1] & i_3[1] & i_4[1] & 1\\ i_3[0] & i_4[0] & 0 & 1 & i_3[1] & i_4[1] & 0 & 1\end{pmatrix}$</li>
+</ol>
+
+</br>
+
+Let's now chan more conv layers... What would happne if the inputs from the left where from another conv+pooling layer?</br>
+</br>
+We have to remember that our matrix of the left, made out of inputs was 
+$$
+\begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix} = 
+\begin{pmatrix}
+\frac{\partial{Cv_1}}{\partial{a}} & \frac{\partial{Cv_1}}{\partial{b}} & \frac{\partial{Cv_1}}{\partial{c}} & \frac{\partial{Cv_1}}{\partial{d}} \\
+\frac{\partial{Cv_2}}{\partial{a}} & \frac{\partial{Cv_2}}{\partial{b}} & \frac{\partial{Cv_2}}{\partial{c}} & \frac{\partial{Cv_2}}{\partial{d}} \\
+\frac{\partial{Cv_3}}{\partial{a}} & \frac{\partial{Cv_3}}{\partial{b}} & \frac{\partial{Cv_3}}{\partial{c}} & \frac{\partial{Cv_3}}{\partial{d}} \\
+\frac{\partial{Cv_4}}{\partial{a}} & \frac{\partial{Cv_4}}{\partial{b}} & \frac{\partial{Cv_4}}{\partial{c}} & \frac{\partial{Cv_4}}{\partial{d}} \\
+\end{pmatrix}
+$$
+
+Well be using ' for all the convolutions we'll be pluggin in the inputs $i$
+
+Let say that 
+$$
+i = O'_1 = \sigma(net_{O'_1}) = \sigma(e'\cdot Cv'_1 + f' \cdot Cv'_2 + g') 
+$$
+and 
+$$
+Cv'_1 = \sigma(net_{Cv'_1}) = \sigma(a'\cdot 0 + b'\cdot i_1 + c'\cdot i_2 + d')
+$$
+
+Now our error would be:
+
+$$
+\frac{\partial{Err}}{\partial{a'}} = 
+2(O - T) \cdot \begin{pmatrix} \frac{\partial{O_1}}{\partial{a'}} \\ \frac{\partial{O_2}}{\partial{a'}}\end{pmatrix}
+$$
+
+Where 
+$$
+\frac{\partial{O_1}}{\partial{a'}} = 
+\sigma'(net_{O1}) \cdot (e \cdot \frac{\partial{Cv_1}}{\partial{a'}} + f \cdot \frac{\partial{Cv_2}}{\partial{a'}} ) = 
+\sigma'(net_{O1}) \cdot (e \cdot \sigma'(net_{Cv1}) \cdot \frac{\partial{net_{Cv1}}}{\partial{a'}} + f \cdot \sigma'(net_{Cv2}) \cdot \frac{\partial{net_{Cv2}}}{\partial{a'}} ) = 
+$$
+$$
+\frac{\partial{O_1}}{\partial{a'}} = \sigma'(net_{O1}) \cdot 
+(
+(e \cdot \sigma'(net_{Cv1}) \cdot \frac{\partial{(a \cdot Cv'_1 + b \cdot Cv'_2 + c\cdot Cv'_3 + d)}}{\partial{a'}} ) + 
+(f \cdot \sigma'(net_{Cv2}) \cdot \frac{\partial{(a \cdot Cv'_2 + b \cdot Cv'_3 + c\cdot Cv'_4 + d)}}{\partial{a'}} ) 
+)
+$$
+
+$$
+\frac{\partial{O_1}}{\partial{a'}} = \sigma'(net_{O1}) \cdot 
+(
+(e \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'1}) \cdot 0    + b \cdot \sigma(net_{Cv'2}) \cdot i'_1  + c \cdot \sigma(net_{Cv'3}) \cdot i'_2) + 
+(f \cdot \sigma'(net_{Cv2}) \cdot (a \cdot \sigma(net_{Cv'2}) \cdot i'_1 + b \cdot \sigma(net_{Cv'3}) \cdot i'_2  + c \cdot \sigma(net_{Cv'4}) \cdot i'_3) 
+)
+$$
+
+$$
+\frac{\partial{O_1}}{\partial{a'}} = \sigma'(net_{O1}) \cdot 
+\begin{pmatrix} 
+e & f
+\end{pmatrix} \cdot 
+\begin{pmatrix} 
+\sigma'(net_{Cv1}) & 0 \\
+0 & \sigma'(net_{Cv2}) 
+\end{pmatrix} \cdot 
+\begin{pmatrix}
+a \cdot \sigma(net_{Cv'1}) \cdot 0    + b \cdot \sigma(net_{Cv'2}) \cdot i'_1  + c \cdot \sigma(net_{Cv'3}) \cdot i'_2 \\
+a \cdot \sigma(net_{Cv'2}) \cdot i'_1 + b \cdot \sigma(net_{Cv'3}) \cdot i'_2  + c \cdot \sigma(net_{Cv'4}) \cdot i'_3 
+\end{pmatrix}
+$$
+
+$$
+\frac{\partial{O_1}}{\partial{a'}} = \sigma'(net_{O1}) \cdot 
+\begin{pmatrix} 
+e & f
+\end{pmatrix} \cdot 
+\begin{pmatrix} 
+\sigma'(net_{Cv1}) & 0 \\
+0 & \sigma'(net_{Cv2}) 
+\end{pmatrix} \cdot 
+\begin{pmatrix} 
+\sigma(net_{Cv'1}) &  \sigma(net_{Cv'2}) & \sigma(net_{Cv'3}) \\
+\sigma(net_{Cv'2}) &  \sigma(net_{Cv'3}) & \sigma(net_{Cv'4})
+\end{pmatrix}
+\begin{pmatrix} 
+a \\ b \\ c
+\end{pmatrix}
+\begin{pmatrix} 
+0    & i'_1 \\
+i'_1 & i'_2 \\
+i'_2 & i'_3 \\
+\end{pmatrix}
+
+wrooong!!!
+$$
+
+Extending this for all the weights:
+
+$$\frac{\partial{O_1}}{\partial{a'}} = \sigma'(net_{O1}) \cdot ((e \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'1}) \cdot 0       + b \cdot \sigma(net_{Cv'2}) \cdot i'_1  + c \cdot \sigma(net_{Cv'3}) \cdot i'_2) + (f \cdot \sigma'(net_{Cv2}) \cdot (a \cdot \sigma(net_{Cv'2}) \cdot i'_1 + b \cdot \sigma(net_{Cv'3}) \cdot i'_2  + c \cdot \sigma(net_{Cv'4}) \cdot i'_3) )$$
+$$\frac{\partial{O_1}}{\partial{b'}} = \sigma'(net_{O1}) \cdot ((e \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'1}) \cdot i'_1    + b \cdot \sigma(net_{Cv'2}) \cdot i'_2  + c \cdot \sigma(net_{Cv'3}) \cdot i'_3) + (f \cdot \sigma'(net_{Cv2}) \cdot (a \cdot \sigma(net_{Cv'2}) \cdot i'_2 + b \cdot \sigma(net_{Cv'3}) \cdot i'_3  + c \cdot \sigma(net_{Cv'4}) \cdot i'_4) )$$
+$$\frac{\partial{O_1}}{\partial{c'}} = \sigma'(net_{O1}) \cdot ((e \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'1}) \cdot i'_2    + b \cdot \sigma(net_{Cv'2}) \cdot i'_3  + c \cdot \sigma(net_{Cv'3}) \cdot i'_4) + (f \cdot \sigma'(net_{Cv2}) \cdot (a \cdot \sigma(net_{Cv'2}) \cdot i'_3 + b \cdot \sigma(net_{Cv'3}) \cdot i'_4  + c \cdot \sigma(net_{Cv'4}) \cdot i'_5) )$$
+$$\frac{\partial{O_1}}{\partial{d'}} = \sigma'(net_{O1}) \cdot ((e \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'1}) \cdot i'_3    + b \cdot \sigma(net_{Cv'2}) \cdot i'_4  + c \cdot \sigma(net_{Cv'3}) \cdot i'_5) + (f \cdot \sigma'(net_{Cv2}) \cdot (a \cdot \sigma(net_{Cv'2}) \cdot i'_4 + b \cdot \sigma(net_{Cv'3}) \cdot i'_5  + c \cdot \sigma(net_{Cv'4}) \cdot i'_6) )$$
+
+$$\frac{\partial{O_2}}{\partial{a'}} = \sigma'(net_{O2}) \cdot ((g \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'3}) \cdot i'_2    + b \cdot \sigma(net_{Cv'4}) \cdot i'_3  + c \cdot \sigma(net_{Cv'5}) \cdot i'_4) + (h \cdot \sigma'(net_{Cv4}) \cdot (a \cdot \sigma(net_{Cv'4}) \cdot i'_3 + b \cdot \sigma(net_{Cv'5}) \cdot i'_4  + c \cdot \sigma(net_{Cv'6}) \cdot i'_5) )$$
+$$\frac{\partial{O_2}}{\partial{b'}} = \sigma'(net_{O2}) \cdot ((g \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'3}) \cdot i'_3    + b \cdot \sigma(net_{Cv'4}) \cdot i'_4  + c \cdot \sigma(net_{Cv'5}) \cdot i'_5) + (h \cdot \sigma'(net_{Cv4}) \cdot (a \cdot \sigma(net_{Cv'4}) \cdot i'_4 + b \cdot \sigma(net_{Cv'5}) \cdot i'_5  + c \cdot \sigma(net_{Cv'6}) \cdot i'_6) )$$
+$$\frac{\partial{O_2}}{\partial{c'}} = \sigma'(net_{O2}) \cdot ((g \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'3}) \cdot i'_4    + b \cdot \sigma(net_{Cv'4}) \cdot i'_5  + c \cdot \sigma(net_{Cv'5}) \cdot i'_6) + (h \cdot \sigma'(net_{Cv4}) \cdot (a \cdot \sigma(net_{Cv'4}) \cdot i'_5 + b \cdot \sigma(net_{Cv'5}) \cdot i'_6  + c \cdot \sigma(net_{Cv'6}) \cdot i'_7) )$$
+$$\frac{\partial{O_2}}{\partial{d'}} = \sigma'(net_{O2}) \cdot ((g \cdot \sigma'(net_{Cv1}) \cdot (a \cdot \sigma(net_{Cv'3}) \cdot i'_5    + b \cdot \sigma(net_{Cv'4}) \cdot i'_6  + c \cdot \sigma(net_{Cv'5}) \cdot i'_7) + (h \cdot \sigma'(net_{Cv4}) \cdot (a \cdot \sigma(net_{Cv'4}) \cdot i'_6 + b \cdot \sigma(net_{Cv'5}) \cdot i'_7  + c \cdot \sigma(net_{Cv'6}) \cdot i'_8) )$$
+
+
+
+</br>
+<h2>Contact/Questions:</h2>
+ &lt;my_github_account_username&gt;$@gmail.com$.
+</br>
+</br>
+</div>
+</body>
+</html>
