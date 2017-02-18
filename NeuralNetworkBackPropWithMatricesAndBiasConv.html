@@ -50,22 +50,22 @@ function PrintMat(m)
 
 function MatId(dim,value)
 {
-    var O = [];        
+    var O = [];
     for(var i=0;i<dim;i++)
     {
         O[i] = Array(dim).fill(0);
         O[i][i] = value;
-    }    
-    return O;  
+    }
+    return O;
 }
 
 function MulMat(m1, m2)
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m1.length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m2[0].length;i++)        
+        for(var i=0;i<m2[0].length;i++)
         {
             var tmp=0;
             for(var k=0;k<m1[0].length;k++)
@@ -75,16 +75,16 @@ function MulMat(m1, m2)
             O[j].push( tmp);
         }
     }
-    return O;  
+    return O;
 }
 
 function TransposeMat(m)
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m[0].length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m.length;i++)        
+        for(var i=0;i<m.length;i++)
         {
             O[j][i] = m[i][j];
         }
@@ -94,11 +94,11 @@ function TransposeMat(m)
 
 function AddMat(m1, m2)
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m1.length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
+        for(var i=0;i<m1[0].length;i++)
         {
             O[j][i] = m1[j][i] + m2[j][i];
         }
@@ -108,11 +108,11 @@ function AddMat(m1, m2)
 
 function SimpleMulMat(m1, m2)
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m1.length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
+        for(var i=0;i<m1[0].length;i++)
         {
             O[j][i] = m1[j][i] * m2[j][i];
         }
@@ -123,11 +123,11 @@ function SimpleMulMat(m1, m2)
 
 function SubMat(m1, m2)
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m1.length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
+        for(var i=0;i<m1[0].length;i++)
         {
             O[j][i] = m1[j][i] - m2[j][i];
         }
@@ -153,11 +153,11 @@ function DerAct(x)
 }
 function funcMat(func, m )
 {
-    var O = [];        
+    var O = [];
     for(var j=0;j<m.length;j++)
     {
         O[j]=[];
-        for(var i=0;i<m[0].length;i++)        
+        for(var i=0;i<m[0].length;i++)
         {
             O[j][i] = func(m[j][i]);
         }
@@ -183,28 +183,28 @@ function UpdateWeights(m1,m2, learningRate)
 function GraphAxis()
 {
     context.beginPath();
-    context.strokeStyle="#000000";    
-    context.moveTo(0,300-20); 
+    context.strokeStyle="#000000";
+    context.moveTo(0,300-20);
     context.lineTo(600,300-20);
-    context.moveTo(20,0); 
+    context.moveTo(20,0);
     context.lineTo(20,300);
     context.closePath();
-    context.stroke(); 
+    context.stroke();
 }
 
 // this helps taking care of the bias
 function AddBiasOneT(vin)
 {
     var vout = [].concat(vin);
-    
+
     vout.push( Array(vout[0].length).fill(1) );
-    return vout;   
+    return vout;
 }
 
 function DrawDecisionBoundary(tx,ty, size)
-{    
+{
     var canvasData = context.getImageData(0, 0, size, size);
-    
+
     for(var y=0;y<size;y++)
     {
         for(var x=0;x<size;x++)
@@ -217,7 +217,7 @@ function DrawDecisionBoundary(tx,ty, size)
             var o0   = AddBiasOneT([[xx],[yy]]);
             var net1 = MulMat(wl_i1, o0);
             var o1   = AddBiasOneT(funcMat(Act, net1));
-            var net2 = MulMat(wl_12, o1); 
+            var net2 = MulMat(wl_12, o1);
             var o2   = funcMat(Act, net2);
 
             v = o2[0][0]>.5?255:0;
@@ -228,7 +228,7 @@ function DrawDecisionBoundary(tx,ty, size)
             canvasData.data[index + 3] = 128;
         }
     }
-    context.putImageData(canvasData, tx, ty);    
+    context.putImageData(canvasData, tx, ty);
 }
 
 //-------------------------------
@@ -241,7 +241,7 @@ var wl_12 = RandomMat(4+1,1);
 function GetSlice(input, offset, count)
 {
     //center kernel
-    return input.slice(offset, offset + count).concat([1]);    
+    return input.slice(offset, offset + count).concat([1]);
 }
 
 function ConvGetPadding(convWeights)
@@ -252,23 +252,23 @@ function ConvGetPadding(convWeights)
 function ConvForwardNetOffset( convWeights, input, offset)
 {
     var res = 0;
-    
+
     slice = GetSlice(input, offset, convWeights.length-1)
-    
+
     for(var j=0;j<slice.length;j++)
     {
         res += convWeights[j] * slice[j];
     }
-    
+
     return res;
 }
 
 function ConvForward(convWeights, input)
 {
     var out = [];
-    
+
     var padding = ConvGetPadding(convWeights);
-    
+
     for(var i=0;i<input.length - padding;i++)
     {
         var res = ConvForwardNetOffset(convWeights, input, i);
@@ -280,23 +280,23 @@ function ConvForward(convWeights, input)
 function ConvBackProp( convWeights, prevWeights, input)
 {
     var mat = [];
-        
+
     var padding = ConvGetPadding(convWeights);
-    
+
     for(var i=0;i<input.length - padding;i++)
     {
         var row = GetSlice(input, i, convWeights.length-1);
 
         var o_i = DerAct(ConvForwardNetOffset(convWeights, input, i));
-        
+
         for(var j=0;j<row.length;j++)
             row[j] *= o_i;
-        
+
         mat.push(row)
     }
-    
-    //return MulMat(TransposeMat(prevWeights), mat);    
-    return MulMat(prevWeights, mat);    
+
+    //return MulMat(TransposeMat(prevWeights), mat);
+    return MulMat(prevWeights, mat);
 }
 
 function ConvPadInput(input)
@@ -308,40 +308,40 @@ function ConvTest()
 {
     convWeights = [0.1,0.2, .1, 1.0];
     input = [1,2,3,4];
-    
+
     input = ConvPadInput(input);
-    
+
     target = [[1,9,9,1]]
-        
+
     var numericalDerivatives = [];
-       
+
     for(var i=0;i<convWeights.length;i++)
     {
-        convWeights[i]+=.00001    
-        o1 = ConvForward(convWeights, input)    
+        convWeights[i]+=.00001
+        o1 = ConvForward(convWeights, input)
         errp = SubMat(o1, target)
         err1 = Square(errp)
         convWeights[i]-=.00001
 
-        o2 = ConvForward(convWeights, input)    
+        o2 = ConvForward(convWeights, input)
         errv = SubMat(o2, target)
         err2 = Square(errv)
-        
+
         var res = MulMat([[1/.00001]], SubMat(err1, err2));
-        
+
         numericalDerivatives.push(res[0][0])
-    }    
-    
+    }
+
     document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
-    
+
     //derivative
-    
+
     id = MatId(input.length - ConvGetPadding(convWeights), 1 );
-    
+
     var bp = ConvBackProp( convWeights, id, input);
     var der = MulMat(MulMat([[2]],errv), bp);
-    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"    
+
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"
 }
 
 class PaddingVect1D
@@ -350,7 +350,7 @@ class PaddingVect1D
     {
         this.padding = padding;
     }
-    
+
     forwardPass(input)
     {
         var b = input.slice(0)
@@ -366,12 +366,13 @@ class PaddingMat1D
     {
         this.padding = padding;
     }
-    
+
     forwardPass(input)
     {
         var b = input.slice(0)
         b.unshift(Array(input[0].length).fill(0));
         b.push(Array(input[0].length).fill(0));
+        this.o = b;
         return b;
     }
 }
@@ -388,89 +389,10 @@ function Conv1DInputForward(input, weights, bias, padding)
             o+= input[j+i] * weights[i];
         }
         o+= bias;
-        
+
         out.push(o);
-    }    
+    }
     return out;
-}
-
-class Conv1DInput
-{
-    constructor()
-    {
-        this.weights = [1,2,3];
-        this.bias = 4;
-        this.padding = 1;
-    }
-
-    forwardPass(input)
-    {       
-        this.o = Conv1DInputForward(input, this.weights, this.bias, this.padding)
-        return this.o;
-    }
-
-    backpropInput(input, prev)
-    {
-/*    
-        var m = [];
-        
-        for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
-        {
-            var row = []
-            for(var i=0;i<this.weights.length;i++)
-            {
-                row.push(input[j+i]);
-            }
-            row.push(1);
-            m.push(row)
-        }
-        return m;
-*/
-
-        var m = [];
-               
-        for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
-        {
-            var row = []
-            for(var i=0;i<input[0].length;i++)
-            {
-                var o=0;                
-                for(var k=0;k<this.weights.length;k++)
-                {
-                    o += this.weights[k] * input[j+k][i];
-                }
-                row.push(o);
-            }
-            m.push(row)
-        }
-
-        return m;
-        
-    }
-
-    AddWeight(i,val)
-    {
-        if (i<this.weights.length)
-            this.weights[i]+=val
-        else 
-            this.bias+=val
-    }
-
-    numericalDerivarive(network, input)
-    {
-        var outA = []
-        var outB = []
-        for(var i=0;i<4;i++)
-        {
-            this.AddWeight(i,.0001)
-            outA.push(ForwardConv1d(network, input))
-            this.AddWeight(i,-.0001)
-            outB.push(ForwardConv1d(network, input))
-        }
-        var c = MulMat(MatId(outA.length,1.0/.0001),SubMat(outA, outB));        
-        return c;
-    }    
-
 }
 
 class Conv1D
@@ -481,39 +403,64 @@ class Conv1D
         this.bias = 4;
         this.padding = 1;
     }
-    
+
     forwardPass(input)
-    {       
-        this.o = Conv1DInputForward(input, this.weights, this.bias, this.padding)
+    {
+        var input2 = Add1DPadding(input)
+        this.o = Conv1DInputForward(input2, this.weights, this.bias, this.padding)
         return this.o;
     }
-   
-    backpropInput(input, prev)
+
+    backpropInput(output, prev, next)
     {
-        var po = Add1DPadding(prev.o)
-        var pi = Add1DPaddingMat(input)
-        
+        if (next!=undefined)
+        {
+            var input = Add1DPaddingMat(next.currDerivative);
+
+            var m = [];
+
+            for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
+            {
+                var row = []
+                for(var i=0;i<input[0].length;i++)
+                {
+                    var o=0;
+                    for(var k=0;k<this.weights.length;k++)
+                    {
+                        o += this.weights[k] * input[j+k][i];
+                    }
+                    row.push(o);
+                }
+                m.push(row)
+              }
+
+              output = m;
+        }
+
+        this.currDerivative = output;
+
+        var deltas = []
+        var input = Add1DPadding(prev.o)
         var m = [];
-        
-        for(var j=0;j<pi.length-this.weights.length+ this.padding;j++)
+        for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
         {
             var row = []
             for(var i=0;i<this.weights.length;i++)
             {
-                row.push(po[j+i]);
+                row.push(input[j+i]);
             }
             row.push(1);
-            m.push(row)
+            deltas.push(row);
         }
-        //return m;
-        return MulMat(m, input);
+
+        this.deltas = TransposeMat(MulMat(this.currDerivative, deltas));
     }
-    
+
     AddWeight(i,val)
     {
         if (i<this.weights.length)
             this.weights[i]+=val
-        else 
+        else
             this.bias+=val
     }
 
@@ -528,10 +475,10 @@ class Conv1D
             this.AddWeight(i,-.0001)
             outB.push(ForwardConv1d(network, input))
         }
-        var c = MulMat(MatId(outA.length,1.0/.0001),SubMat(outA, outB));        
+        var c = MulMat(MatId(outA.length,1.0/.0001),SubMat(outA, outB));
         return c;
-    }    
-    
+    }
+
 }
 
 function Add1DPadding(input)
@@ -552,17 +499,31 @@ function Add1DPaddingMat(input)
 //----------------------------------------------------------------
 
 class InputLayer
-{   
+{
     forwardPass(input)
     {
         this.o = input
         return this.o;
     }
-     
+
 }
 
 //----------------------------------------------------------------
+class OutputLayer
+{
+  constructor(n,m)
+  {
 
+  }
+  forwardPass(input)
+  {
+
+  }
+  backpropInput( prev, next)
+  {
+  }
+
+}
 class FullyConnected
 {
     constructor(neurons, inp)
@@ -571,30 +532,36 @@ class FullyConnected
         for(var i=0;i<neurons;i++)
         {
             this.weights[i] = [];
-            
+
             for(var j=0;j<(inp+1);j++)
             {
                 this.weights[i].push(2*Math.random()-1);
             }
-        }    
+        }
     }
-    
+
     forwardPass(input)
-    {                       
+    {
         this.net = MulMat(this.weights, AddBiasOneT(input))
         this.o = funcMat(Act, this.net)
         return this.o;
     }
-    
-    backpropInput(input, prev)
-    {       
-        var sp  =  SimpleMulMat(funcMat(DerAct, this.net), input);      
-        this.deltas = MulMat(sp, TransposeMat(AddBiasOneT(prev.o)));    
-        return MulMat(TransposeMat(this.weights), sp);
-    }    
-    
+
+    backpropInput(output, prev, next)
+    {
+      if (next!=undefined)
+          output = MulMat(TransposeMat(next.weights), next.currDerivative);
+
+        //derivative current layer
+        this.currDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
+        // multiplied by the input
+        this.deltas = MulMat(this.currDerivative, TransposeMat(AddBiasOneT(prev.o)));
+        //
+    }
+
     numericalDerivarive(network, input)
     {
+        var out = []
         for(var j=0;j<this.weights.length;j++)
         {
             var vA = []
@@ -606,12 +573,13 @@ class FullyConnected
                 this.weights[j][i] -= .0001
                 vB.push(ForwardConv1d(network, TransposeMat(input)))
             }
-            var c = MulMat(MatId(vA.length,1.0/.0001),SubMat(vA, vB));        
-            
-            return c;
-        }    
+            var c = MulMat(MatId(vA.length,1.0/.0001),SubMat(vA, vB));
+
+            out.push(c)
+        }
+        return out;
     }
-    
+
 }
 //----------------------------------------------------------------
 
@@ -629,70 +597,70 @@ function ForwardConv1d(l, input)
 function Test_FullyConnected()
 {
     var input = [[1,2,3,4]];
-    
+
     var network =[]
-    
+
     network.push(new InputLayer());
     network.push(new FullyConnected(4,4));
     network.push(new FullyConnected(1,4));
 
     //forward
-    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"   
+    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
     var res = ForwardConv1d(network, TransposeMat(input))
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"
 
     //analitical
-    document.getElementById("text").innerHTML += "<pre>Back pass output layer</pre>"   
-    var res2 = network[2].backpropInput([[1]], network[1])
-    var res1 = network[1].backpropInput(res2, network[0])
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].deltas)+"</pre>";    
+    document.getElementById("text").innerHTML += "<pre>Back pass output layer</pre>"
+    network[2].backpropInput([[1]], network[1], undefined)
+    network[1].backpropInput(undefined, network[0], network[2])
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].deltas)+"</pre>";
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].deltas)+"</pre>";
 
     //numerical
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative</pre>";   
-    var c = network[2].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(TransposeMat(c))+"</pre>";    
+    document.getElementById("text").innerHTML += "<pre>Numerical Derivative</pre>";
+    var c = network[1].numericalDerivarive(network, input)
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
+    c = network[2].numericalDerivarive(network, input)
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
 }
 
 function Test_Conv1D()
-{   
+{
     var input = [1,2,3,4];
-    
+
     var network =[]
-    
+
     network.push(new InputLayer());
-    network.push(new PaddingVect1D(1));
     network.push(new Conv1D());
-    network.push(new PaddingVect1D(1));
-    network.push(new Conv1D());    
-        
+    network.push(new Conv1D());
+
     //
-    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"   
+    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
     var res = ForwardConv1d(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat([res])+"</pre>"    
-    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat([res])+"</pre>"
+
     out = [
     [1,0,0,0],
     [0,1,0,0],
     [0,0,1,0],
     [0,0,0,1],
     ]
-    
-    //
-    document.getElementById("text").innerHTML += "<pre>Backprop pass</pre>"  
-    var bp2 = network[4].backpropInput(out, network[2]);
-    var bp1 = network[2].backpropInput(bp2, network[0]);
-    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(bp1)+"</pre>"    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(bp2)+"</pre>"    
-    
-    //numerical derivative
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 1</pre>";   
-    var c = network[2].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(TransposeMat(c))+"</pre>";        
 
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 3</pre>";   
-    var c = network[4].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(TransposeMat(c))+"</pre>";        
+    //
+    document.getElementById("text").innerHTML += "<pre>Backprop pass</pre>"
+    network[2].backpropInput(out, network[1], undefined);
+    network[1].backpropInput(undefined, network[0], network[2]);
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].deltas)+"</pre>";
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].deltas)+"</pre>";
+
+    //numerical derivative
+    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 1</pre>";
+    var c = network[1].numericalDerivarive(network, input)
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
+
+    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 2</pre>";
+    var c = network[2].numericalDerivarive(network, input)
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
 }
 
 
@@ -703,7 +671,7 @@ class MaxPool1D
     constructor()
     {
     }
-    
+
     forward(input)
     {
         this.max = []
@@ -728,17 +696,17 @@ class MaxPool1D
                 //kust pick a random one (the last one)
                 this.max[i]=0;
                 this.max[i+1]=1;
-            }    
+            }
         }
-        
+
         return output;
     }
-    
+
     backward(input)
     {
-        return this.max;    
+        return this.max;
     }
-    
+
 }
 
 function MaxPool1DMat(input)
@@ -758,9 +726,9 @@ function MaxPool1DMat(input)
             row[i+1]=.5;
         }
 
-        out[i/2] = row    
+        out[i/2] = row
     }
-    
+
     return out;
 }
 
@@ -771,14 +739,14 @@ function MaxPool1DForward(input)
     {
         out.push( Math.max(input[i],input[i+1]))
     }
-    
+
     return [out]
 }
 
 function MaxPool1DBackProp(input)
 {
     var out = [];
-    
+
     for(var i=0;i<input.length;i+=2)
     {
         var max = Math.max(input[i],input[i+1]);
@@ -790,7 +758,7 @@ function MaxPool1DBackProp(input)
                 out.push(0);
         }
     }
-    
+
     return [out]
 }
 
@@ -800,18 +768,18 @@ function MaxPool1DTest()
     target = [2,4]
     for(var i=0;i<input.length;i++)
     {
-        input[i]+=.00001    
+        input[i]+=.00001
         var o1 = MaxPool1DForward(input);
-        input[i]-=.00001    
+        input[i]-=.00001
         var o2 = MaxPool1DForward(input);
-        
+
         var res = MulMat([[1/.00001]], SubMat(o1, o2))
 
         document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"
     }
-    
+
     var res = MaxPool1DBackProp(input)
-    
+
     document.getElementById("text").innerHTML += "<pre>BackProp\n"+PrintMat(res)+"</pre>"
 }
 
@@ -822,48 +790,48 @@ function ConvMaxPoolTest()
 {
     convWeights = [1,2, 1, 1.0];
     input = [2,1,3,4];
-    
+
     input = ConvPadInput(input);
-    
+
     target = [[1,1]]
-    
+
     var numericalDerivatives = [];
 
     for(var i=0;i<convWeights.length;i++)
     {
-        convWeights[i]+=.00001    
-        o1 = ConvForward(convWeights, input)    
-        mp1 = MaxPool1DMat(o1[0]);       
+        convWeights[i]+=.00001
+        o1 = ConvForward(convWeights, input)
+        mp1 = MaxPool1DMat(o1[0]);
         op1 = MulMat(o1, TransposeMat(mp1) );
         errp = SubMat(op1, target)
         err1 = Square(errp)
         convWeights[i]-=.00001
 
-        o2 = ConvForward(convWeights, input)    
-        mp2 = MaxPool1DMat(o2[0]);       
+        o2 = ConvForward(convWeights, input)
+        mp2 = MaxPool1DMat(o2[0]);
         op2 = MulMat(o2, TransposeMat(mp2) );
         errv = SubMat(op2, target)
         err2 = Square(errv)
-        
+
         var res = MulMat([[1/.00001]], SubMat(err1, err2));
-        
+
         numericalDerivatives.push(res[0][0])
-    }    
+    }
 
     document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
 
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(o2)+"</pre>"    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(mp2)+"</pre>"    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(op2)+"</pre>"    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(errv)+"</pre>"    
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(o2)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(mp2)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(op2)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(errv)+"</pre>"
 
     //derivative
-       
+
     id = MaxPool1DMat(o2[0]);
     var bp = ConvBackProp( convWeights, id, input);
     var der = MulMat(MulMat([[2]],errv), bp);
-    
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"    
+
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"
 
 }
 
@@ -888,75 +856,75 @@ function iterate()
 {
     var err;
     var fitness=100;
-    
+
     iterations++;
-    
+
     var totalErr;
-    
+
     var netResponses = []
-    
+
     for(var j=0;j<1;j++)
     {
         totalErr = 0;
         for(var i=0;i<4;i++)
-        {       
+        {
             //forward pass
-            //            
-            
+            //
+
             var o0   = AddBiasOneT(TransposeMat([il[i]]));
             var net1 = MulMat(wl_i1, o0);
             var o1   = AddBiasOneT(funcMat(Act, net1));
-            var net2 = MulMat(wl_12, o1); 
+            var net2 = MulMat(wl_12, o1);
             var o2   = funcMat(Act, net2);
 
             netResponses[i] = o2;
 
             err = SubMat(o2, TransposeMat([t[i]]));
-            
+
             //back propagate
             //
-            
+
             // outer layer
-            var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
+            var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);
             var e2   = MulMat(sp2, TransposeMat(o1));
-            
+
             // inner layer
             var wsp2   = MulMat(TransposeMat(wl_12), sp2);
-            var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);                  
+            var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);
             var e1   = MulMat(sp1, TransposeMat(o0));
-            
+
             //update weights
-            UpdateWeights(wl_12, e2, -learningRate);           
-            UpdateWeights(wl_i1, e1, -learningRate);        
-            
+            UpdateWeights(wl_12, e2, -learningRate);
+            UpdateWeights(wl_i1, e1, -learningRate);
+
             totalErr += MulMat( err, TransposeMat(err))[0][0];
         }
-        
-    }    
-    
+
+    }
+
     DrawDecisionBoundary(600-100-10,10, 100)
-    
-    oldFitness = curFitness;    
+
+    oldFitness = curFitness;
     curFitness = totalErr;
 
     context.beginPath();
-    context.strokeStyle="#ff0000";    
-    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20); 
+    context.strokeStyle="#ff0000";
+    context.moveTo((iterations-1)/10+20,300-oldFitness*300-20);
     context.lineTo((iterations)/10+20,300-curFitness*300-20);
     context.closePath();
-    context.stroke();        
-    
+    context.stroke();
+
     document.getElementById("text").innerHTML = "X axis, epochs: "+ iterations +"<br>Y axis, Error: "  + curFitness + "<br>";
-    
+
     document.getElementById("text").innerHTML += " <br> "
-    
+
     for(var i=0;i<4;i++)
     {
         document.getElementById("text").innerHTML += il[i][0]+" xor "
         document.getElementById("text").innerHTML += il[i][1]+" = "
         document.getElementById("text").innerHTML += netResponses[i]+"<br>"
     }
-    
+
 }
 
 function init()
@@ -966,11 +934,11 @@ function init()
     context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,300);
     GraphAxis();
-    //setInterval(iterate,10); 
+    //setInterval(iterate,10);
     //ConvTest()
     //MaxPool1DTest()
     //ConvMaxPoolTest()
-    //Test_FullyConnected()
+    Test_FullyConnected()
     Test_Conv1D()
 }
 </script>
@@ -980,7 +948,7 @@ function init()
 <div id="container">
 <div id="text" ></div>
 
-	
+
 <canvas id="myCanvas" width="600" height="300"></canvas>
 
 Let's consider a simple conv network an
@@ -994,15 +962,15 @@ d lets compute how to do back propagation on it. </br>
 <li>Conv layer: (a,b,c, d) (being that d for the bias term)</li>
 <li>Output layer : (e, f, g) Again the g is the bias</li>
 </ul>
-For the convolutions layer we have that: 
-$$\begin{align*} 
+For the convolutions layer we have that:
+$$\begin{align*}
 Cv_1 &= \sigma(net_{Cv1}) &= \sigma(a\cdot 0 + b\cdot i_1 + c\cdot i_2 + d) \\
 Cv_2 &= \sigma(net_{Cv2}) &= \sigma(a\cdot i_1 + b\cdot i_2 + c\cdot 0 + d) \\
 \end{align*}$$
 
 And for the output layer:
-$$\begin{align*} 
-O &= \sigma(net_O) &= \sigma(e\cdot Cv_1+f\cdot Cv_2 + g) 
+$$\begin{align*}
+O &= \sigma(net_O) &= \sigma(e\cdot Cv_1+f\cdot Cv_2 + g)
 \end{align*}$$
 
 The derivatives with respect to $a$,$b$,$c$ and $d$ of the Conv layer are:
@@ -1040,7 +1008,7 @@ Writing the above in terms of our previous output neuron ($O = \sigma(e\cdot Cv_
 
 $$\begin{pmatrix}  \frac{\partial{O}}{\partial{a}}  & \frac{\partial{O}}{\partial{b}}  & \frac{\partial{O}}{\partial{c}}  & \frac{\partial{O}}{\partial{d}}  \end{pmatrix} =  \sigma'(net_O) \cdot \begin{pmatrix} 1 & 0\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & 0 & 1\end{pmatrix}$$
 </li>
-<li>if $Cv_1 < Cv_2$ our output neuron would be $O=\sigma(0\cdot Cv_1+1\cdot Cv_2 + 0)$ then: 
+<li>if $Cv_1 < Cv_2$ our output neuron would be $O=\sigma(0\cdot Cv_1+1\cdot Cv_2 + 0)$ then:
 
 $$\begin{pmatrix}  \frac{\partial{O}}{\partial{a}}  & \frac{\partial{O}}{\partial{b}}  & \frac{\partial{O}}{\partial{c}}  & \frac{\partial{O}}{\partial{d}}  \end{pmatrix} =  \sigma'(net_O) \cdot \begin{pmatrix} 0 & 1\end{pmatrix} \cdot \begin{pmatrix} \sigma'(net_{Cv1}) & 0\\ 0 & \sigma'(net_{Cv2}) \end{pmatrix} \cdot \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & 0 & 1\end{pmatrix}$$
 </li>
@@ -1057,41 +1025,41 @@ Let's compute how muc the error changes when we change to $a$, $b$, $c$ and $d$.
 $$Err = (O-T)^2 = (O_1-t_1)^2 + (O_2-t_2)^2$$
 
 $$\frac{\partial{Err}}{\partial{a}} = 2(O_1-t_1)\frac{\partial{O_1}}{\partial{a}} + 2(O_2-t_2)\frac{\partial{O_2}}{\partial{a}}
-= 2\begin{pmatrix} (O_1-t_1) & (O_2-t_2) \end{pmatrix} \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix} 
-= 2(O - T) \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix} 
+= 2\begin{pmatrix} (O_1-t_1) & (O_2-t_2) \end{pmatrix} \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix}
+= 2(O - T) \cdot \begin{pmatrix}\frac{\partial{O_1}}{\partial{a}} \\ \frac{\partial{O_2}}{\partial{a}}\end{pmatrix}
 $$
 
 Doing the same for all the conv weights:
 
 $$ \begin{pmatrix} \frac{\partial{Err}}{\partial{a}} & \frac{\partial{Err}}{\partial{b}} & \frac{\partial{Err}}{\partial{c}} & \frac{\partial{Err}}{\partial{d}} \end{pmatrix}
-= 2(O - T) \cdot 
+= 2(O - T) \cdot
 \begin{pmatrix}
 \frac{\partial{O_1}}{\partial{a}}  & \frac{\partial{O_1}}{\partial{b}}  & \frac{\partial{O_1}}{\partial{c}}  & \frac{\partial{O_1}}{\partial{d}}   \\
-\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}  
+\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}
 \end{pmatrix} =
 $$
 
 Where, in matrix formulation we have that:
 
-$$ 
-= 2(O - T) \cdot 
+$$
+= 2(O - T) \cdot
 \begin{pmatrix} \sigma'(net_{O_1}) & 0 \\ 0 & \sigma'(net_{O_2}) \end{pmatrix}
 \begin{pmatrix} e & f & 0 & 0 \\ 0 & 0 & j & k \end{pmatrix}
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_1}}{\partial{a}}  & \frac{\partial{Cv_1}}{\partial{b}}  & \frac{\partial{Cv_1}}{\partial{c}}  & \frac{\partial{Cv_1}}{\partial{d}}   \\
 \frac{\partial{Cv_2}}{\partial{a}}  & \frac{\partial{Cv_2}}{\partial{b}}  & \frac{\partial{Cv_2}}{\partial{c}}  & \frac{\partial{Cv_2}}{\partial{d}}   \\
 \frac{\partial{Cv_3}}{\partial{a}}  & \frac{\partial{Cv_3}}{\partial{b}}  & \frac{\partial{Cv_3}}{\partial{c}}  & \frac{\partial{Cv_3}}{\partial{d}}   \\
 \frac{\partial{Cv_4}}{\partial{a}}  & \frac{\partial{Cv_4}}{\partial{b}}  & \frac{\partial{Cv_4}}{\partial{c}}  & \frac{\partial{Cv_4}}{\partial{d}}   \\
 \end{pmatrix} =
-$$ 
+$$
 
-$$ 
-= 2(O - T) \cdot 
+$$
+= 2(O - T) \cdot
 \begin{pmatrix} \sigma'(net_{O_1}) & 0 \\ 0 & \sigma'(net_{O_2}) \end{pmatrix}
 \begin{pmatrix} e & f & 0 & 0 \\ 0 & 0 & j & k \end{pmatrix}
 \begin{pmatrix} \sigma'(net_{Cv1}) & 0 & 0 & 0\\ 0 & \sigma'(net_{Cv2}) & 0 & 0\\ 0 & 0 & \sigma'(net_{Cv3}) & 0\\ 0 & 0 & 0 & \sigma'(net_{Cv4}) \end{pmatrix}
 \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}
-$$ 
+$$
 
 if the output later was a max pool layer, our weights $e$, $f$, $j$ and $k$ would be:
 
@@ -1104,18 +1072,18 @@ Also in a maxpool layer there is no sigmoid and it shoudl be the identity, hence
 $$
 \begin{pmatrix}
 \frac{\partial{O_1}}{\partial{a}}  & \frac{\partial{O_1}}{\partial{b}}  & \frac{\partial{O_1}}{\partial{c}}  & \frac{\partial{O_1}}{\partial{d}}   \\
-\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}  
+\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}
 \end{pmatrix} =
 \begin{pmatrix} e & f & 0 & 0 \\ 0 & 0 & j & k \end{pmatrix}
 \begin{pmatrix} \sigma'(net_{Cv1}) & 0 & 0 & 0\\ 0 & \sigma'(net_{Cv2}) & 0 & 0\\ 0 & 0 & \sigma'(net_{Cv3}) & 0\\ 0 & 0 & 0 & \sigma'(net_{Cv4}) \end{pmatrix}
 \begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}
-$$ 
+$$
 
 
 If we want to use minibatching, let say we want to use the above funtion onto 2 inputs$(I[0], I[1])$, 2 outputs$(O[0], O[1])$ and 2 targets$(T[0], T[1])$ at a time, in the above expression:
 <ol>
 <li>$(O - T)$ would become $\begin{pmatrix} O[1]-T[1] \\O[2]-T[2]\end{pmatrix}$</li>
-<li>$\begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}$ should become 
+<li>$\begin{pmatrix} 0 & i_1 & i_2 & 1 \\ i_1 & i_2 & i_3 & 1 \\ i_2 & i_3 & i_4  & 1\\ i_3 & i_4 & 0  & 1\end{pmatrix}$ should become
 $\begin{pmatrix} 0 & i_1[0] & i_2[0] & 1 & 0 & i_1[1] & i_2[1] & 1\\ i_1[0] & i_2[0] & i_3[0] & 1 & i_1[1] & i_2[1] & i_3[1] & 1\\ i_2[0] & i_3[0] & i_4[0] & 1 & i_2[1] & i_3[1] & i_4[1] & 1\\ i_3[0] & i_4[0] & 0 & 1 & i_3[1] & i_4[1] & 0 & 1\end{pmatrix}$</li>
 </ol>
 
@@ -1124,113 +1092,113 @@ Let's now chan more conv layers... What would happne if the inputs from the left
 If we substitute the $i's$ with $O's$, that is the output of another layer, we'd get the following </br>
 </br>
 
-For the convolutions layer we have that: 
-$$\begin{align*} 
+For the convolutions layer we have that:
+$$\begin{align*}
 Cv_1 &= \sigma(net_{Cv1}) &= \sigma(a\cdot 0 + b\cdot O'_1 + c\cdot O'_2 + d) \\
 Cv_2 &= \sigma(net_{Cv2}) &= \sigma(a\cdot O'_1 + b\cdot O'_2 + c\cdot O'_3 + d) \\
 Cv_3 &= \sigma(net_{Cv3}) &= \sigma(a\cdot O'_2 + b\cdot O'_3 + c\cdot O'_4 + d) \\
 Cv_4 &= \sigma(net_{Cv4}) &= \sigma(a\cdot O'_3 + b\cdot O'_4 + c\cdot 0 + d) \\
 \end{align*}$$
 
-Since now we dont know the derivatives as before, we get 
+Since now we dont know the derivatives as before, we get
 
-$$ 
+$$
 \begin{pmatrix}
 \frac{\partial{O_1}}{\partial{a}}  & \frac{\partial{O_1}}{\partial{b}}  & \frac{\partial{O_1}}{\partial{c}}  & \frac{\partial{O_1}}{\partial{d}}   \\
-\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}  
+\frac{\partial{O_2}}{\partial{a}}  & \frac{\partial{O_2}}{\partial{b}}  & \frac{\partial{O_2}}{\partial{c}}  & \frac{\partial{O_2}}{\partial{d}}
 \end{pmatrix} =
 \begin{pmatrix} e & f & 0 & 0 \\ 0 & 0 & j & k \end{pmatrix}
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_1}}{\partial{a'}}  & \frac{\partial{Cv_1}}{\partial{b'}}  & \frac{\partial{Cv_1}}{\partial{c'}}  & \frac{\partial{Cv_1}}{\partial{d'}}   \\
 \frac{\partial{Cv_2}}{\partial{a'}}  & \frac{\partial{Cv_2}}{\partial{b'}}  & \frac{\partial{Cv_2}}{\partial{c'}}  & \frac{\partial{Cv_2}}{\partial{d'}}   \\
 \frac{\partial{Cv_3}}{\partial{a'}}  & \frac{\partial{Cv_3}}{\partial{b'}}  & \frac{\partial{Cv_3}}{\partial{c'}}  & \frac{\partial{Cv_3}}{\partial{d'}}   \\
 \frac{\partial{Cv_4}}{\partial{a'}}  & \frac{\partial{Cv_4}}{\partial{b'}}  & \frac{\partial{Cv_4}}{\partial{c'}}  & \frac{\partial{Cv_4}}{\partial{d'}}   \\
 \end{pmatrix}
-$$ 
+$$
 
 the derivatives now are more complex:
 
 $$
-\frac{\partial{Cv_1}}{\partial{a'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{a}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{0}}{\partial{a'}} + b\cdot \frac{\partial{O'_1}}{\partial{a'}} + c\cdot \frac{\partial{O'_2}}{\partial{a'}} ) \\  
-\frac{\partial{Cv_1}}{\partial{b'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{b}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_1}}{\partial{b'}} + b\cdot \frac{\partial{O'_2}}{\partial{b'}} + c\cdot \frac{\partial{O'_3}}{\partial{b'}} ) \\  
-\frac{\partial{Cv_1}}{\partial{c'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{c}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_2}}{\partial{c'}} + b\cdot \frac{\partial{O'_3}}{\partial{c'}} + c\cdot \frac{\partial{O'_4}}{\partial{c'}} ) \\  
-\frac{\partial{Cv_1}}{\partial{d'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{d}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_3}}{\partial{d'}} + b\cdot \frac{\partial{O'_4}}{\partial{d'}} + c\cdot \frac{\partial{O'_5}}{\partial{d'}} ) \\  
+\frac{\partial{Cv_1}}{\partial{a'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{a}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{0}}{\partial{a'}} + b\cdot \frac{\partial{O'_1}}{\partial{a'}} + c\cdot \frac{\partial{O'_2}}{\partial{a'}} ) \\
+\frac{\partial{Cv_1}}{\partial{b'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{b}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_1}}{\partial{b'}} + b\cdot \frac{\partial{O'_2}}{\partial{b'}} + c\cdot \frac{\partial{O'_3}}{\partial{b'}} ) \\
+\frac{\partial{Cv_1}}{\partial{c'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{c}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_2}}{\partial{c'}} + b\cdot \frac{\partial{O'_3}}{\partial{c'}} + c\cdot \frac{\partial{O'_4}}{\partial{c'}} ) \\
+\frac{\partial{Cv_1}}{\partial{d'}}  = \sigma'(net_{Cv1}) \frac{\partial{(net_{Cv1})}}{\partial{d}} = \sigma'(net_{Cv1}) \cdot (a\cdot \frac{\partial{O'_3}}{\partial{d'}} + b\cdot \frac{\partial{O'_4}}{\partial{d'}} + c\cdot \frac{\partial{O'_5}}{\partial{d'}} ) \\
 $$
 
 in matrix formulation
 $$
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_1}}{\partial{a'}} & \frac{\partial{Cv_1}}{\partial{b'}} & \frac{\partial{Cv_1}}{\partial{c'}} & \frac{\partial{Cv_1}}{\partial{d'}}
-\end{pmatrix} 
-= 
-\sigma'(net_{Cv1}) 
+\end{pmatrix}
+=
+\sigma'(net_{Cv1})
 \cdot
-\begin{pmatrix} 
+\begin{pmatrix}
 (a\cdot \frac{\partial{0}}{\partial{a'}} + b\cdot \frac{\partial{O'_1}}{\partial{a'}} + c\cdot \frac{\partial{O'_2}}{\partial{a'}} ) &
-(a\cdot \frac{\partial{0}}{\partial{b'}} + b\cdot \frac{\partial{O'_1}}{\partial{b'}} + c\cdot \frac{\partial{O'_2}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{0}}{\partial{c'}} + b\cdot \frac{\partial{O'_1}}{\partial{c'}} + c\cdot \frac{\partial{O'_2}}{\partial{c'}} ) &  
-(a\cdot \frac{\partial{0}}{\partial{d'}} + b\cdot \frac{\partial{O'_1}}{\partial{d'}} + c\cdot \frac{\partial{O'_2}}{\partial{d'}} ) & 
+(a\cdot \frac{\partial{0}}{\partial{b'}} + b\cdot \frac{\partial{O'_1}}{\partial{b'}} + c\cdot \frac{\partial{O'_2}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{0}}{\partial{c'}} + b\cdot \frac{\partial{O'_1}}{\partial{c'}} + c\cdot \frac{\partial{O'_2}}{\partial{c'}} ) &
+(a\cdot \frac{\partial{0}}{\partial{d'}} + b\cdot \frac{\partial{O'_1}}{\partial{d'}} + c\cdot \frac{\partial{O'_2}}{\partial{d'}} ) &
 \end{pmatrix} =
 $$
 $$
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_2}}{\partial{a'}} & \frac{\partial{Cv_2}}{\partial{b'}} & \frac{\partial{Cv_2}}{\partial{c'}} & \frac{\partial{Cv_2}}{\partial{d'}}
-\end{pmatrix} 
-= 
-\sigma'(net_{Cv2}) 
+\end{pmatrix}
+=
+\sigma'(net_{Cv2})
 \cdot
-\begin{pmatrix} 
-(a\cdot \frac{\partial{O'_1}}{\partial{a'}} + b\cdot \frac{\partial{O'_2}}{\partial{a'}} + c\cdot \frac{\partial{O'_3}}{\partial{a'}} ) &  
-(a\cdot \frac{\partial{O'_1}}{\partial{b'}} + b\cdot \frac{\partial{O'_2}}{\partial{b'}} + c\cdot \frac{\partial{O'_3}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{O'_1}}{\partial{c'}} + b\cdot \frac{\partial{O'_2}}{\partial{c'}} + c\cdot \frac{\partial{O'_3}}{\partial{c'}} ) &  
-(a\cdot \frac{\partial{O'_1}}{\partial{d'}} + b\cdot \frac{\partial{O'_2}}{\partial{d'}} + c\cdot \frac{\partial{O'_3}}{\partial{d'}} ) & 
+\begin{pmatrix}
+(a\cdot \frac{\partial{O'_1}}{\partial{a'}} + b\cdot \frac{\partial{O'_2}}{\partial{a'}} + c\cdot \frac{\partial{O'_3}}{\partial{a'}} ) &
+(a\cdot \frac{\partial{O'_1}}{\partial{b'}} + b\cdot \frac{\partial{O'_2}}{\partial{b'}} + c\cdot \frac{\partial{O'_3}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{O'_1}}{\partial{c'}} + b\cdot \frac{\partial{O'_2}}{\partial{c'}} + c\cdot \frac{\partial{O'_3}}{\partial{c'}} ) &
+(a\cdot \frac{\partial{O'_1}}{\partial{d'}} + b\cdot \frac{\partial{O'_2}}{\partial{d'}} + c\cdot \frac{\partial{O'_3}}{\partial{d'}} ) &
 \end{pmatrix} =
 $$
 $$
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_3}}{\partial{a'}} & \frac{\partial{Cv_3}}{\partial{b'}} & \frac{\partial{Cv_3}}{\partial{c'}} & \frac{\partial{Cv_3}}{\partial{d'}}
-\end{pmatrix} 
-= 
-\sigma'(net_{Cv3}) 
+\end{pmatrix}
+=
+\sigma'(net_{Cv3})
 \cdot
-\begin{pmatrix} 
-(a\cdot \frac{\partial{O'_2}}{\partial{b'}} + b\cdot \frac{\partial{O'_3}}{\partial{b'}} + c\cdot \frac{\partial{O'_4}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{O'_2}}{\partial{b'}} + b\cdot \frac{\partial{O'_3}}{\partial{b'}} + c\cdot \frac{\partial{O'_4}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{O'_2}}{\partial{c'}} + b\cdot \frac{\partial{O'_3}}{\partial{c'}} + c\cdot \frac{\partial{O'_4}}{\partial{c'}} ) &  
-(a\cdot \frac{\partial{O'_2}}{\partial{d'}} + b\cdot \frac{\partial{O'_3}}{\partial{d'}} + c\cdot \frac{\partial{O'_4}}{\partial{d'}} ) & 
+\begin{pmatrix}
+(a\cdot \frac{\partial{O'_2}}{\partial{b'}} + b\cdot \frac{\partial{O'_3}}{\partial{b'}} + c\cdot \frac{\partial{O'_4}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{O'_2}}{\partial{b'}} + b\cdot \frac{\partial{O'_3}}{\partial{b'}} + c\cdot \frac{\partial{O'_4}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{O'_2}}{\partial{c'}} + b\cdot \frac{\partial{O'_3}}{\partial{c'}} + c\cdot \frac{\partial{O'_4}}{\partial{c'}} ) &
+(a\cdot \frac{\partial{O'_2}}{\partial{d'}} + b\cdot \frac{\partial{O'_3}}{\partial{d'}} + c\cdot \frac{\partial{O'_4}}{\partial{d'}} ) &
 \end{pmatrix} =
 $$
 $$
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_4}}{\partial{a'}} & \frac{\partial{Cv_4}}{\partial{b'}} & \frac{\partial{Cv_4}}{\partial{c'}} & \frac{\partial{Cv_4}}{\partial{d'}}
-\end{pmatrix} 
-= 
-\sigma'(net_{Cv4}) 
+\end{pmatrix}
+=
+\sigma'(net_{Cv4})
 \cdot
-\begin{pmatrix} 
-(a\cdot \frac{\partial{O'_3}}{\partial{b'}} + b\cdot \frac{\partial{O'_4}}{\partial{b'}} + c\cdot \frac{\partial{O'_5}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{O'_3}}{\partial{b'}} + b\cdot \frac{\partial{O'_4}}{\partial{b'}} + c\cdot \frac{\partial{O'_5}}{\partial{b'}} ) &  
-(a\cdot \frac{\partial{O'_3}}{\partial{c'}} + b\cdot \frac{\partial{O'_4}}{\partial{c'}} + c\cdot \frac{\partial{O'_5}}{\partial{c'}} ) &  
-(a\cdot \frac{\partial{O'_3}}{\partial{d'}} + b\cdot \frac{\partial{O'_4}}{\partial{d'}} + c\cdot \frac{\partial{O'_5}}{\partial{d'}} ) & 
+\begin{pmatrix}
+(a\cdot \frac{\partial{O'_3}}{\partial{b'}} + b\cdot \frac{\partial{O'_4}}{\partial{b'}} + c\cdot \frac{\partial{O'_5}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{O'_3}}{\partial{b'}} + b\cdot \frac{\partial{O'_4}}{\partial{b'}} + c\cdot \frac{\partial{O'_5}}{\partial{b'}} ) &
+(a\cdot \frac{\partial{O'_3}}{\partial{c'}} + b\cdot \frac{\partial{O'_4}}{\partial{c'}} + c\cdot \frac{\partial{O'_5}}{\partial{c'}} ) &
+(a\cdot \frac{\partial{O'_3}}{\partial{d'}} + b\cdot \frac{\partial{O'_4}}{\partial{d'}} + c\cdot \frac{\partial{O'_5}}{\partial{d'}} ) &
 \end{pmatrix} =
 $$
 
 $$
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{Cv_1}}{\partial{a'}} & \frac{\partial{Cv_1}}{\partial{b'}} & \frac{\partial{Cv_1}}{\partial{c'}} & \frac{\partial{Cv_1}}{\partial{d'}}
-\end{pmatrix} 
-= 
-\sigma'(net_{Cv1}) 
+\end{pmatrix}
+=
+\sigma'(net_{Cv1})
 \cdot
-\begin{pmatrix} 
+\begin{pmatrix}
 a & b & c
-\end{pmatrix} 
+\end{pmatrix}
 \cdot
-\begin{pmatrix} 
+\begin{pmatrix}
 \frac{\partial{0}}{\partial{a'}}    & \frac{\partial{0}}{\partial{b'}} & \frac{\partial{0}}{\partial{c'}} & \frac{\partial{0}}{\partial{d'}} \\
 \frac{\partial{O'_1}}{\partial{a'}} & \frac{\partial{O'_1}}{\partial{b'}} & \frac{\partial{O'_1}}{\partial{c'}} & \frac{\partial{O'_1}}{\partial{d'}} \\
 \frac{\partial{O'_2}}{\partial{a'}} & \frac{\partial{O'_2}}{\partial{b'}} & \frac{\partial{O'_2}}{\partial{c'}} & \frac{\partial{O'_2}}{\partial{d'}} \\
-\end{pmatrix} 
+\end{pmatrix}
 $$
 
 And now we got the outputs derivatives as a function of the derivatives of the preceding layer
