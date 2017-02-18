@@ -381,16 +381,24 @@ class PaddingMat1D
 function Conv1DInputForward(input, weights, bias, padding)
 {
     out = []
-    for(var j=0;j<input.length-weights.length+ padding;j++)
+    for(var i=0;i<weights.length+1;i++)
     {
-        var o = 0;
-        for(var i=0;i<weights.length;i++)
-        {
-            o+= input[j+i] * weights[i];
-        }
-        o+= bias;
+      out[i]=[]
+    }
 
-        out.push(o);
+    for(var b=0;b<input[0].length;b++)
+    {
+      for(var j=0;j<input.length-weights.length+ padding;j++)
+      {
+          var o = 0;
+          for(var i=0;i<weights.length;i++)
+          {
+              o+= input[j+i][b] * weights[i];
+          }
+          o+= bias;
+
+          out[j][b]=o;
+      }
     }
     return out;
 }
@@ -406,7 +414,7 @@ class Conv1D
 
     forwardPass(input)
     {
-        var input2 = Add1DPadding(input)
+        var input2 = Add1DPaddingMat(input)
         this.o = Conv1DInputForward(input2, this.weights, this.bias, this.padding)
         return this.o;
     }
@@ -415,23 +423,25 @@ class Conv1D
     {
         if (next!=undefined)
         {
-            var input = Add1DPaddingMat(next.currDerivative);
-
+            var input = Add1DPaddingMat(next.currDerivative)
             var m = [];
+
+            for(var i=0;i<this.weights.length+1;i++)
+            {
+              m[i]=[]
+            }
 
             for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
             {
-                var row = []
                 for(var i=0;i<input[0].length;i++)
                 {
                     var o=0;
                     for(var k=0;k<this.weights.length;k++)
                     {
-                        o += this.weights[k] * input[j+k][i];
+                        o += input[j+k][i] * this.weights[k];
                     }
-                    row.push(o);
+                    m[j][i] = o;
                 }
-                m.push(row)
               }
 
               output = m;
@@ -440,20 +450,26 @@ class Conv1D
         this.currDerivative = output;
 
         var deltas = []
-        var input = Add1DPadding(prev.o)
-        var m = [];
-        for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
+
+        for(var i=0;i<this.weights.length+1;i++)
         {
-            var row = []
-            for(var i=0;i<this.weights.length;i++)
-            {
-                row.push(input[j+i]);
-            }
-            row.push(1);
-            deltas.push(row);
+          deltas[i]=[]
         }
 
-        this.deltas = TransposeMat(MulMat(this.currDerivative, deltas));
+        var input = Add1DPaddingMat(prev.o)
+        for(var b=0;b<input[0].length;b++)
+        {
+            for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
+            {
+                for(var i=0;i<this.weights.length;i++)
+                {
+                    deltas[i].push(input[j+i][b]);
+                }
+                deltas[this.weights.length].push(1);
+            }
+
+        }
+        this.deltas = TransposeMat(MulMat(this.currDerivative, TransposeMat(deltas)));
     }
 
     AddWeight(i,val)
@@ -471,9 +487,9 @@ class Conv1D
         for(var i=0;i<4;i++)
         {
             this.AddWeight(i,.0001)
-            outA.push(ForwardConv1d(network, input))
+            outA.push(ForwardConv1d(network, TransposeMat(input)))
             this.AddWeight(i,-.0001)
-            outB.push(ForwardConv1d(network, input))
+            outB.push(ForwardConv1d(network, TransposeMat(input)))
         }
         var c = MulMat(MatId(outA.length,1.0/.0001),SubMat(outA, outB));
         return c;
@@ -607,7 +623,8 @@ function Test_FullyConnected()
     //forward
     document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
     var res = ForwardConv1d(network, TransposeMat(input))
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].o)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].o)+"</pre>"
 
     //analitical
     document.getElementById("text").innerHTML += "<pre>Back pass output layer</pre>"
@@ -626,7 +643,7 @@ function Test_FullyConnected()
 
 function Test_Conv1D()
 {
-    var input = [1,2,3,4];
+    var input = [[1,2,3,4]];
 
     var network =[]
 
@@ -636,8 +653,9 @@ function Test_Conv1D()
 
     //
     document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
-    var res = ForwardConv1d(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat([res])+"</pre>"
+    ForwardConv1d(network, TransposeMat(input))
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].o)+"</pre>"
+    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].o)+"</pre>"
 
     out = [
     [1,0,0,0],
