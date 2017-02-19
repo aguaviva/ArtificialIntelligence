@@ -39,12 +39,12 @@ function RandomMat(inp,neurons)
 
 function PrintMat(m)
 {
-    var str = "[\n";
+    var str = "";//"[\n";
     for(var j=0;j<m.length;j++)
     {
         str += "[" + m[j].join(",") + "]\n";
     }
-    str += "]";
+    //str += "]";
     return str;
 }
 
@@ -120,6 +120,19 @@ function SimpleMulMat(m1, m2)
     return O;
 }
 
+function MulKMat(k, m)
+{
+    var O = [];
+    for(var j=0;j<m.length;j++)
+    {
+        O[j]=[];
+        for(var i=0;i<m[0].length;i++)
+        {
+            O[j][i] = m[j][i] * k;
+        }
+    }
+    return O;
+}
 
 function SubMat(m1, m2)
 {
@@ -201,35 +214,6 @@ function AddBiasOneT(vin)
     return vout;
 }
 
-function DrawDecisionBoundary(tx,ty, size)
-{
-    var canvasData = context.getImageData(0, 0, size, size);
-
-    for(var y=0;y<size;y++)
-    {
-        for(var x=0;x<size;x++)
-        {
-            var index = (x + y * size) * 4;
-
-            xx = x/size
-            yy = 1-y/size
-
-            var o0   = AddBiasOneT([[xx],[yy]]);
-            var net1 = MulMat(wl_i1, o0);
-            var o1   = AddBiasOneT(funcMat(Act, net1));
-            var net2 = MulMat(wl_12, o1);
-            var o2   = funcMat(Act, net2);
-
-            v = o2[0][0]>.5?255:0;
-
-            canvasData.data[index + 0] = v;
-            canvasData.data[index + 1] = 255-v;
-            canvasData.data[index + 2] = 0;
-            canvasData.data[index + 3] = 128;
-        }
-    }
-    context.putImageData(canvasData, tx, ty);
-}
 
 //-------------------------------
 
@@ -299,50 +283,6 @@ function ConvBackProp( convWeights, prevWeights, input)
     return MulMat(prevWeights, mat);
 }
 
-function ConvPadInput(input)
-{
-    return [0].concat(input).concat([0]);;
-}
-
-function ConvTest()
-{
-    convWeights = [0.1,0.2, .1, 1.0];
-    input = [1,2,3,4];
-
-    input = ConvPadInput(input);
-
-    target = [[1,9,9,1]]
-
-    var numericalDerivatives = [];
-
-    for(var i=0;i<convWeights.length;i++)
-    {
-        convWeights[i]+=.00001
-        o1 = ConvForward(convWeights, input)
-        errp = SubMat(o1, target)
-        err1 = Square(errp)
-        convWeights[i]-=.00001
-
-        o2 = ConvForward(convWeights, input)
-        errv = SubMat(o2, target)
-        err2 = Square(errv)
-
-        var res = MulMat([[1/.00001]], SubMat(err1, err2));
-
-        numericalDerivatives.push(res[0][0])
-    }
-
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
-
-    //derivative
-
-    id = MatId(input.length - ConvGetPadding(convWeights), 1 );
-
-    var bp = ConvBackProp( convWeights, id, input);
-    var der = MulMat(MulMat([[2]],errv), bp);
-
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"
-}
 
 class PaddingVect1D
 {
@@ -381,14 +321,11 @@ class PaddingMat1D
 function Conv1DInputForward(input, weights, bias, padding)
 {
     out = []
-    for(var i=0;i<weights.length+1;i++)
-    {
-      out[i]=[]
-    }
 
-    for(var b=0;b<input[0].length;b++)
+    for(var j=0;j<input.length-weights.length+ padding;j++)
     {
-      for(var j=0;j<input.length-weights.length+ padding;j++)
+      out[j]=[]
+      for(var b=0;b<input[0].length;b++)
       {
           var o = 0;
           for(var i=0;i<weights.length;i++)
@@ -419,57 +356,62 @@ class Conv1D
         return this.o;
     }
 
-    backpropInput(output, prev, next)
+    getErrorDer()
     {
-        if (next!=undefined)
-        {
-            var input = Add1DPaddingMat(next.currDerivative)
-            var m = [];
+      var input = Add1DPaddingMat(this.layerDerivative)
+      var m = [];
 
-            for(var i=0;i<this.weights.length+1;i++)
-            {
-              m[i]=[]
-            }
-
-            for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
-            {
-                for(var i=0;i<input[0].length;i++)
-                {
-                    var o=0;
-                    for(var k=0;k<this.weights.length;k++)
-                    {
-                        o += input[j+k][i] * this.weights[k];
-                    }
-                    m[j][i] = o;
-                }
+      for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
+      {
+          m[j] = []
+          for(var i=0;i<input[0].length;i++)
+          {
+              var o=0;
+              for(var k=0;k<this.weights.length;k++)
+              {
+                  o += input[j+k][i] * this.weights[k];
               }
-
-              output = m;
+              m[j][i] = o;
+          }
         }
 
-        this.currDerivative = output;
+        return m;
+    }
 
+    backpropInput(prev, next)
+    {
+        output = next.getErrorDer();
+
+        this.layerDerivative = output;
+/*
+         output = next.getErrorDer();
+
+          //derivative current layer
+          this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
+          // multiplied by the input
+          this.deltas = MulMat(this.layerDerivative, TransposeMat(AddBiasOneT(prev.o)));
+*/
         var deltas = []
-
         for(var i=0;i<this.weights.length+1;i++)
         {
           deltas[i]=[]
         }
 
         var input = Add1DPaddingMat(prev.o)
+
         for(var b=0;b<input[0].length;b++)
         {
             for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
             {
-                for(var i=0;i<this.weights.length;i++)
+                for(var i=0;i<this.weights.length;i++)                
                 {
                     deltas[i].push(input[j+i][b]);
                 }
                 deltas[this.weights.length].push(1);
             }
-
         }
-        this.deltas = TransposeMat(MulMat(this.currDerivative, TransposeMat(deltas)));
+
+        this.deltas = MulMat(deltas,this.layerDerivative);
     }
 
     AddWeight(i,val)
@@ -529,17 +471,30 @@ class OutputLayer
 {
   constructor(n,m)
   {
-
   }
+
+  setValue(v)
+  {
+    this.value = v;
+  }
+
   forwardPass(input)
   {
-
+    this.diff = SubMat(input, this.value);
+    this.o = MulMat(TransposeMat(this.diff), this.diff);
+    return this.o;
   }
+
+  getErrorDer()
+  {
+    return MulKMat(2,this.diff);
+  }
+
   backpropInput( prev, next)
   {
   }
-
 }
+
 class FullyConnected
 {
     constructor(neurons, inp)
@@ -563,16 +518,20 @@ class FullyConnected
         return this.o;
     }
 
-    backpropInput(output, prev, next)
+    getErrorDer()
     {
-      if (next!=undefined)
-          output = MulMat(TransposeMat(next.weights), next.currDerivative);
+      return MulMat(TransposeMat(this.weights), this.layerDerivative);
+    }
+
+    backpropInput(prev, next)
+    {
+        output = next.getErrorDer();
 
         //derivative current layer
-        this.currDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
+        this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
+
         // multiplied by the input
-        this.deltas = MulMat(this.currDerivative, TransposeMat(AddBiasOneT(prev.o)));
-        //
+        this.deltas = MulMat(this.layerDerivative, TransposeMat(AddBiasOneT(prev.o)));
     }
 
     numericalDerivarive(network, input)
@@ -595,11 +554,8 @@ class FullyConnected
         }
         return out;
     }
-
 }
 //----------------------------------------------------------------
-
-
 function ForwardConv1d(l, input)
 {
     var res = input
@@ -608,6 +564,50 @@ function ForwardConv1d(l, input)
         res = l[i].forwardPass(res);
     }
     return res;
+}
+
+function TestNetwork(network, input, output)
+{
+  network[network.length-1].setValue(TransposeMat(output));
+
+  document.getElementById("text").innerHTML += "<pre>---------------------------------</pre>"
+
+    //
+
+    ForwardConv1d(network, TransposeMat(input))
+    for(var i=0;i<network.length;i++)
+    {
+        document.getElementById("text").innerHTML += "<pre>network Forward "+i+" pass</pre>"
+        document.getElementById("text").innerHTML += "<pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>"
+    }
+
+    //
+    for(var i=network.length-2;i>0;i--)
+    {
+      var curr = i
+      var prev = network[curr -1];
+      var next = (curr + 1)<network.length?network[curr + 1]:undefined;
+      network[curr].backpropInput(prev, next);
+    }
+    /*
+    network[4].backpropInput(output, network[3], undefined);
+    network[3].backpropInput(undefined, network[2], network[4]);
+    network[2].backpropInput(undefined, network[1], network[3]);
+    network[1].backpropInput(undefined, network[0], network[2]);
+    */
+    for(var i=1;i<network.length-1;i++)
+    {
+        document.getElementById("text").innerHTML += "<pre>Backprop pass "+i+"</pre>"
+        document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[i].deltas)+"</pre>"
+    }
+
+    //numerical derivative
+    for(var i=1;i<network.length-1;i++)
+    {
+        document.getElementById("text").innerHTML += "<pre>Numerical Derivative "+i+"</pre>";
+        var c = network[i].numericalDerivarive(network, input)
+        document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
+    }
 }
 
 function Test_FullyConnected()
@@ -619,29 +619,30 @@ function Test_FullyConnected()
     network.push(new InputLayer());
     network.push(new FullyConnected(4,4));
     network.push(new FullyConnected(1,4));
+    network.push(new OutputLayer(1,1));
 
-    //forward
-    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
-    var res = ForwardConv1d(network, TransposeMat(input))
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].o)+"</pre>"
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].o)+"</pre>"
+    output = [[1]]
 
-    //analitical
-    document.getElementById("text").innerHTML += "<pre>Back pass output layer</pre>"
-    network[2].backpropInput([[1]], network[1], undefined)
-    network[1].backpropInput(undefined, network[0], network[2])
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].deltas)+"</pre>";
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].deltas)+"</pre>";
-
-    //numerical
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative</pre>";
-    var c = network[1].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
-    c = network[2].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
+    TestNetwork(network, input, output)
 }
 
 function Test_Conv1D()
+{
+    var input = [[1,2]];
+
+    var network =[]
+
+    network.push(new InputLayer());
+    network.push(new Conv1D());
+    network.push(new Conv1D());
+    network.push(new OutputLayer(1,2));
+
+    output = [[1,0]]
+
+    TestNetwork(network, input, output)
+}
+
+function Test_Conv1AndFullyConnected()
 {
     var input = [[1,2,3,4]];
 
@@ -650,207 +651,13 @@ function Test_Conv1D()
     network.push(new InputLayer());
     network.push(new Conv1D());
     network.push(new Conv1D());
+    network.push(new FullyConnected(4,4));
+    network.push(new FullyConnected(1,4));
+    network.push(new OutputLayer(1,1));
 
-    //
-    document.getElementById("text").innerHTML += "<pre>network Forward pass</pre>"
-    ForwardConv1d(network, TransposeMat(input))
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].o)+"</pre>"
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].o)+"</pre>"
+    output = [[1]];
 
-    out = [
-    [1,0,0,0],
-    [0,1,0,0],
-    [0,0,1,0],
-    [0,0,0,1],
-    ]
-
-    //
-    document.getElementById("text").innerHTML += "<pre>Backprop pass</pre>"
-    network[2].backpropInput(out, network[1], undefined);
-    network[1].backpropInput(undefined, network[0], network[2]);
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[1].deltas)+"</pre>";
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[2].deltas)+"</pre>";
-
-    //numerical derivative
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 1</pre>";
-    var c = network[1].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
-
-    document.getElementById("text").innerHTML += "<pre>Numerical Derivative 2</pre>";
-    var c = network[2].numericalDerivarive(network, input)
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(c)+"</pre>";
-}
-
-
-//------------------------------------------------- Max Pool 1D
-
-class MaxPool1D
-{
-    constructor()
-    {
-    }
-
-    forward(input)
-    {
-        this.max = []
-        output = []
-        for(var i=0;i<input.length;i+=2)
-        {
-            if (input[i]> input[i+1])
-            {
-                output[i/2]=input[i];
-                this.max[i]=1;
-                this.max[i+1]=0;
-            }
-            else if (input[i]< input[i+1])
-            {
-                output[i/2]=input[i+1]
-                this.max[i]=0;
-                this.max[i+1]=1;
-            }
-            else
-            {
-                output[i/2]=input[i]
-                //kust pick a random one (the last one)
-                this.max[i]=0;
-                this.max[i+1]=1;
-            }
-        }
-
-        return output;
-    }
-
-    backward(input)
-    {
-        return this.max;
-    }
-
-}
-
-function MaxPool1DMat(input)
-{
-    var out = [];
-    for(var i=0;i<input.length;i+=2)
-    {
-        var row = Array(input.length).fill(0);
-
-        if (input[i]> input[i+1])
-            row[i]=1
-        else if (input[i] < input[i+1])
-            row[i+1]=1
-        else
-        {
-            row[i]=.5;
-            row[i+1]=.5;
-        }
-
-        out[i/2] = row
-    }
-
-    return out;
-}
-
-function MaxPool1DForward(input)
-{
-    var out = [];
-    for(var i=0;i<input.length;i+=2)
-    {
-        out.push( Math.max(input[i],input[i+1]))
-    }
-
-    return [out]
-}
-
-function MaxPool1DBackProp(input)
-{
-    var out = [];
-
-    for(var i=0;i<input.length;i+=2)
-    {
-        var max = Math.max(input[i],input[i+1]);
-        for(var j=0;j<2;j++)
-        {
-            if (input[i+j]==max)
-                out.push(1);
-            else
-                out.push(0);
-        }
-    }
-
-    return [out]
-}
-
-function MaxPool1DTest()
-{
-    input = [1,2,3,3];
-    target = [2,4]
-    for(var i=0;i<input.length;i++)
-    {
-        input[i]+=.00001
-        var o1 = MaxPool1DForward(input);
-        input[i]-=.00001
-        var o2 = MaxPool1DForward(input);
-
-        var res = MulMat([[1/.00001]], SubMat(o1, o2))
-
-        document.getElementById("text").innerHTML += "<pre>"+PrintMat(res)+"</pre>"
-    }
-
-    var res = MaxPool1DBackProp(input)
-
-    document.getElementById("text").innerHTML += "<pre>BackProp\n"+PrintMat(res)+"</pre>"
-}
-
-
-//------------------------------------------ test conv & maxpool
-
-function ConvMaxPoolTest()
-{
-    convWeights = [1,2, 1, 1.0];
-    input = [2,1,3,4];
-
-    input = ConvPadInput(input);
-
-    target = [[1,1]]
-
-    var numericalDerivatives = [];
-
-    for(var i=0;i<convWeights.length;i++)
-    {
-        convWeights[i]+=.00001
-        o1 = ConvForward(convWeights, input)
-        mp1 = MaxPool1DMat(o1[0]);
-        op1 = MulMat(o1, TransposeMat(mp1) );
-        errp = SubMat(op1, target)
-        err1 = Square(errp)
-        convWeights[i]-=.00001
-
-        o2 = ConvForward(convWeights, input)
-        mp2 = MaxPool1DMat(o2[0]);
-        op2 = MulMat(o2, TransposeMat(mp2) );
-        errv = SubMat(op2, target)
-        err2 = Square(errv)
-
-        var res = MulMat([[1/.00001]], SubMat(err1, err2));
-
-        numericalDerivatives.push(res[0][0])
-    }
-
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat([numericalDerivatives])+"</pre>"
-
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(o2)+"</pre>"
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(mp2)+"</pre>"
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(op2)+"</pre>"
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(errv)+"</pre>"
-
-    //derivative
-
-    id = MaxPool1DMat(o2[0]);
-    var bp = ConvBackProp( convWeights, id, input);
-    var der = MulMat(MulMat([[2]],errv), bp);
-
-    document.getElementById("text").innerHTML += "<pre>"+PrintMat(der)+"</pre>"
-
+    TestNetwork(network, input, output)
 }
 
 
@@ -956,8 +763,9 @@ function init()
     //ConvTest()
     //MaxPool1DTest()
     //ConvMaxPoolTest()
-    Test_FullyConnected()
+    //Test_FullyConnected()
     Test_Conv1D()
+    Test_Conv1AndFullyConnected()
 }
 </script>
 
