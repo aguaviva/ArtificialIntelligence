@@ -316,6 +316,48 @@ class PaddingMat1D
         return b;
     }
 }
+
+//----------------------------------------------------------------
+
+class InputLayer
+{
+    forwardPass(input)
+    {
+        this.o = input
+        return this.o;
+    }
+}
+
+//----------------------------------------------------------------
+
+class OutputLayer
+{
+	constructor(n,m)
+	{
+	}
+
+	setValue(v)
+	{
+		this.value = v;
+	}
+
+	forwardPass(input)
+	{
+		this.diff = SubMat(input, this.value);
+		this.o = MulMat(TransposeMat(this.diff), this.diff);
+		return this.o;
+	}
+
+	getErrorDer()
+	{
+		return MulKMat(2,this.diff);
+	}
+
+	backpropInput( prev, next)
+	{
+	}
+}
+
 //----------------------------------------------------------------
 
 function Conv1DInputForward(input, weights, bias, padding)
@@ -340,13 +382,16 @@ function Conv1DInputForward(input, weights, bias, padding)
     return out;
 }
 
+//----------------------------------------------------------------
+
 class Conv1D
 {
     constructor()
     {
         this.weights = [1,2,3];
-        this.bias = 4;
+        this.bias = 1;
         this.padding = 1;
+        this.name ="Conv";
     }
 
     forwardPass(input)
@@ -358,21 +403,21 @@ class Conv1D
 
     getErrorDer()
     {
-      var input = Add1DPaddingMat(this.layerDerivative)
-      var m = [];
+		var input = Add1DPaddingMat(this.layerDerivative)
+		var m = [];
 
-      for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
-      {
-          m[j] = []
-          for(var i=0;i<input[0].length;i++)
-          {
-              var o=0;
-              for(var k=0;k<this.weights.length;k++)
-              {
-                  o += input[j+k][i] * this.weights[k];
-              }
-              m[j][i] = o;
-          }
+		for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
+		{
+			m[j] = []
+			for(var i=0;i<input[0].length;i++)
+			{
+				var o=0;
+				for(var k=0;k<this.weights.length;k++)
+				{
+					o += input[j+k][i] * this.weights[this.weights.length-1 - k];
+				}
+				m[j][i] = o;
+			}
         }
 
         return m;
@@ -380,21 +425,14 @@ class Conv1D
 
     backpropInput(prev, next)
     {
-        output = next.getErrorDer();
+        var output = next.getErrorDer();
 
         this.layerDerivative = output;
-/*
-         output = next.getErrorDer();
 
-          //derivative current layer
-          this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
-          // multiplied by the input
-          this.deltas = MulMat(this.layerDerivative, TransposeMat(AddBiasOneT(prev.o)));
-*/
         var deltas = []
         for(var i=0;i<this.weights.length+1;i++)
         {
-          deltas[i]=[]
+			deltas[i]=[]
         }
 
         var input = Add1DPaddingMat(prev.o)
@@ -454,51 +492,14 @@ function Add1DPaddingMat(input)
         b.push(Array(input[0].length).fill(0));
         return b;
 }
-//----------------------------------------------------------------
-
-class InputLayer
-{
-    forwardPass(input)
-    {
-        this.o = input
-        return this.o;
-    }
-
-}
 
 //----------------------------------------------------------------
-class OutputLayer
-{
-  constructor(n,m)
-  {
-  }
-
-  setValue(v)
-  {
-    this.value = v;
-  }
-
-  forwardPass(input)
-  {
-    this.diff = SubMat(input, this.value);
-    this.o = MulMat(TransposeMat(this.diff), this.diff);
-    return this.o;
-  }
-
-  getErrorDer()
-  {
-    return MulKMat(2,this.diff);
-  }
-
-  backpropInput( prev, next)
-  {
-  }
-}
 
 class FullyConnected
 {
     constructor(neurons, inp)
     {
+        this.name ="Fully";
         this.weights = []
         for(var i=0;i<neurons;i++)
         {
@@ -506,7 +507,8 @@ class FullyConnected
 
             for(var j=0;j<(inp+1);j++)
             {
-                this.weights[i].push(2*Math.random()-1);
+                //this.weights[i].push(2*Math.random()-1);
+                this.weights[i].push(j);
             }
         }
     }
@@ -520,12 +522,14 @@ class FullyConnected
 
     getErrorDer()
     {
-      return MulMat(TransposeMat(this.weights), this.layerDerivative);
+		var t = TransposeMat(this.weights)
+		t.splice(t.length-1,1);		
+		return MulMat(t, this.layerDerivative);
     }
 
     backpropInput(prev, next)
     {
-        output = next.getErrorDer();
+        var output = next.getErrorDer();
 
         //derivative current layer
         this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
@@ -566,11 +570,13 @@ function ForwardConv1d(l, input)
     return res;
 }
 
+//----------------------------------------------------------------
+
 function TestNetwork(network, input, output)
 {
-  network[network.length-1].setValue(TransposeMat(output));
+	network[network.length-1].setValue(TransposeMat(output));
 
-  document.getElementById("text").innerHTML += "<pre>---------------------------------</pre>"
+	document.getElementById("text").innerHTML += "<pre>---------------------------------</pre>"
 
     //
 
@@ -581,25 +587,28 @@ function TestNetwork(network, input, output)
         document.getElementById("text").innerHTML += "<pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>"
     }
 
+	document.getElementById("text").innerHTML += "<pre>---------------------------------</pre>"
+
     //
     for(var i=network.length-2;i>0;i--)
     {
       var curr = i
       var prev = network[curr -1];
       var next = (curr + 1)<network.length?network[curr + 1]:undefined;
+      
+      if (next==undefined)
+        alert("caca");
+      
       network[curr].backpropInput(prev, next);
     }
-    /*
-    network[4].backpropInput(output, network[3], undefined);
-    network[3].backpropInput(undefined, network[2], network[4]);
-    network[2].backpropInput(undefined, network[1], network[3]);
-    network[1].backpropInput(undefined, network[0], network[2]);
-    */
+
     for(var i=1;i<network.length-1;i++)
     {
-        document.getElementById("text").innerHTML += "<pre>Backprop pass "+i+"</pre>"
+        document.getElementById("text").innerHTML += "<pre>Backprop pass "+i+" '" + network[i].name + "'</pre>"
         document.getElementById("text").innerHTML += "<pre>"+PrintMat(network[i].deltas)+"</pre>"
     }
+
+	document.getElementById("text").innerHTML += "<pre>---------------------------------</pre>"
 
     //numerical derivative
     for(var i=1;i<network.length-1;i++)
@@ -618,7 +627,10 @@ function Test_FullyConnected()
 
     network.push(new InputLayer());
     network.push(new FullyConnected(4,4));
-    network.push(new FullyConnected(1,4));
+    network.push(new FullyConnected(4,4));
+    network.push(new FullyConnected(4,4));
+    network.push(new FullyConnected(2,4));
+    network.push(new FullyConnected(1,2));
     network.push(new OutputLayer(1,1));
 
     output = [[1]]
@@ -642,7 +654,23 @@ function Test_Conv1D()
     TestNetwork(network, input, output)
 }
 
-function Test_Conv1AndFullyConnected()
+function Test_Conv1DDebug()
+{
+    var input = [[1,2]];
+
+    var network =[]
+
+    network.push(new InputLayer());
+    network.push(new Conv1D());
+    network.push(new Conv1D());    
+    network.push(new OutputLayer(2,2));
+
+    output = [[1,2]]
+
+    TestNetwork(network, input, output)
+}
+
+function Test_Conv1DDebug4()
 {
     var input = [[1,2,3,4]];
 
@@ -651,8 +679,27 @@ function Test_Conv1AndFullyConnected()
     network.push(new InputLayer());
     network.push(new Conv1D());
     network.push(new Conv1D());
-    network.push(new FullyConnected(4,4));
-    network.push(new FullyConnected(1,4));
+    network.push(new Conv1D());
+    network.push(new OutputLayer(4,4));
+
+    output = [[1,20,3,20]]
+
+    TestNetwork(network, input, output)
+}
+
+
+
+function Test_Conv1AndFullyConnected()
+{
+    var input = [[5,2]];
+
+    var network =[]
+
+    network.push(new InputLayer());
+    network.push(new Conv1D());
+    network.push(new Conv1D());
+    network.push(new FullyConnected(2,2));
+    network.push(new FullyConnected(1,2));
     network.push(new OutputLayer(1,1));
 
     output = [[1]];
@@ -764,8 +811,12 @@ function init()
     //MaxPool1DTest()
     //ConvMaxPoolTest()
     //Test_FullyConnected()
-    Test_Conv1D()
+    //Test_Conv1D()
     Test_Conv1AndFullyConnected()
+    //Test_Conv1DDebug()
+    //Test_Conv1DDebug4()
+
+
 }
 </script>
 
