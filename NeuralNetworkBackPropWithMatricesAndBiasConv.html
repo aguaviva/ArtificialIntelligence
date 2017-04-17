@@ -154,7 +154,7 @@ function Square(v)
 }
 
 //--------------------------------------------------------
-
+/*
 function Act(x)
 {
     return x;//1.0/(1.0+Math.exp(-x));
@@ -164,6 +164,19 @@ function DerAct(x)
 {
     return 1;//Act(x)*(1-Act(x));
 }
+*/
+
+function Act(x)
+{
+    return 1.0/(1.0+Math.exp(-x));
+}
+
+function DerAct(x)
+{
+    return Act(x)*(1-Act(x));
+}
+
+
 function funcMat(func, m )
 {
     var O = [];
@@ -397,27 +410,28 @@ class Conv1D
     forwardPass(input)
     {
         var input2 = Add1DPaddingMat(input)
-        this.o = Conv1DInputForward(input2, this.weights, this.bias, this.padding)
+        this.net = Conv1DInputForward(input2, this.weights, this.bias, this.padding)
+        this.o = funcMat(Act, this.net)
         return this.o;
     }
 
     getErrorDer()
     {
-		var input = Add1DPaddingMat(this.layerDerivative)
-		var m = [];
+        var input = Add1DPaddingMat(this.layerDerivative)
+        var m = [];
 
-		for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
-		{
-			m[j] = []
-			for(var i=0;i<input[0].length;i++)
-			{
-				var o=0;
-				for(var k=0;k<this.weights.length;k++)
-				{
-					o += input[j+k][i] * this.weights[this.weights.length-1 - k];
-				}
-				m[j][i] = o;
-			}
+        for(var j=0;j<input.length -this.weights.length+ this.padding;j++)
+        {
+            m[j] = []
+            for(var i=0;i<input[0].length;i++)
+            {
+                var o=0;
+                for(var k=0;k<this.weights.length;k++)
+                {
+                    o += input[j+k][i] * this.weights[this.weights.length-1 - k];
+                }
+                m[j][i] = o;
+            }
         }
 
         return m;
@@ -427,12 +441,13 @@ class Conv1D
     {
         var output = next.getErrorDer();
 
-        this.layerDerivative = output;
+        //this.layerDerivative = output;
+        this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
 
         var deltas = []
         for(var i=0;i<this.weights.length+1;i++)
         {
-			deltas[i]=[]
+            deltas[i]=[]
         }
 
         var input = Add1DPaddingMat(prev.o)
@@ -441,7 +456,7 @@ class Conv1D
         {
             for(var j=0;j<input.length-this.weights.length+ this.padding;j++)
             {
-                for(var i=0;i<this.weights.length;i++)                
+                for(var i=0;i<this.weights.length;i++)
                 {
                     deltas[i].push(input[j+i][b]);
                 }
@@ -453,7 +468,7 @@ class Conv1D
     }
 
     AddWeight(i,val)
-    {
+	    {
         if (i<this.weights.length)
             this.weights[i]+=val
         else
@@ -523,7 +538,7 @@ class FullyConnected
     getErrorDer()
     {
 		var t = TransposeMat(this.weights)
-		t.splice(t.length-1,1);		
+		t.splice(t.length-1,1);
 		return MulMat(t, this.layerDerivative);
     }
 
