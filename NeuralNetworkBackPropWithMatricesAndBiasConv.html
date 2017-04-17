@@ -334,6 +334,11 @@ class PaddingMat1D
 
 class InputLayer
 {
+	constructor()
+	{
+		this.name ="Input";
+	}
+
     forwardPass(input)
     {
         this.o = input
@@ -347,6 +352,7 @@ class OutputLayer
 {
 	constructor(n,m)
 	{
+		this.name ="Output";
 	}
 
 	setValue(v)
@@ -577,7 +583,7 @@ class FullyConnected
 
 //----------------------------------------------------------------
 
-class MaxPool
+class MaxPool1D
 {
     constructor()
     {
@@ -647,7 +653,7 @@ class MaxPool
 
 //----------------------------------------------------------------
 
-class MidPool
+class MidPool1D
 {
     constructor()
     {
@@ -680,7 +686,7 @@ class MidPool
 			
 			var a = this.input[i*2][0];
 			var b = this.input[i*2 +1][0];
-			row[2*i] = 0.5;    // average derivative
+			row[2*i]   = 0.5;    // average derivative
 			row[2*i+1] = 0.5;  // average derivative
 			
 			out.push(row);
@@ -738,7 +744,7 @@ function TestNetwork(network, input, output)
     ForwardConv1d(network, TransposeMat(input))
     for(var i=0;i<network.length;i++)
     {
-        Print("<pre>network Forward "+i+" pass</pre>");
+        Print("<pre>"+i+") network Forward "+network[i].name+" pass</pre>");
         Print("<pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>");
     }
 
@@ -758,7 +764,7 @@ function TestNetwork(network, input, output)
 
     for(var i=1;i<network.length-1;i++)
     {
-        str += "<pre>Backprop pass "+i+" '" + network[i].name + "'</pre>";
+        str += "<pre>Analytical pass "+i+" '" + network[i].name + "'</pre>";
         str += "<pre>"+PrintMat(network[i].deltas)+"</pre>";
     }
 
@@ -872,7 +878,7 @@ function Test_Conv2AndMaxPoolAndFullyConnected()
 
     network.push(new InputLayer());
     network.push(new Conv1D());
-	network.push(new MidPool());
+	network.push(new MidPool1D());
     network.push(new Conv1D());
     network.push(new FullyConnected(2,2));
     network.push(new FullyConnected(1,2));
