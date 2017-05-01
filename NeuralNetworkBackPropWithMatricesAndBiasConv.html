@@ -229,12 +229,12 @@ function PrintTensor(m)
 
 function Act(x)
 {
-    return x*x;//1.0/(1.0+Math.exp(-x));
+    return x;//1.0/(1.0+Math.exp(-x));
 }
 
 function DerAct(x)
 {
-    return 2*x;//Act(x)*(1-Act(x));
+    return 1;//Act(x)*(1-Act(x));
 }
 
 /*
@@ -758,10 +758,8 @@ class MaxPool1D
 
     backpropInput(prev, next)
     {
-        var output = next.getErrorDer();
-
         //derivative current layer
-        this.layerDerivative  =  output;
+        this.layerDerivative  =  next.getErrorDer();
 
         // multiplied by the input
         this.deltas = [];
@@ -795,7 +793,6 @@ class MidPool1D
             this.o[i] = [(a+b)*0.5];     // average
         }
         
-        this.input = input;
         return this.o;
     }
 
@@ -803,41 +800,16 @@ class MidPool1D
     {
         var out = [];
 
-		/*
-		// matrix formulation
-        for(var i=0;i<this.input.length/2;i++)
-        {
-            var row = Array(this.input.length).fill(0);
-            
-            var a = this.input[i*2][0];
-            var b = this.input[i*2 +1][0];
-            row[2*i]   = 0.5;    // average derivative
-            row[2*i+1] = 0.5;  // average derivative
-            
-            out.push(row);
-        }
-        out = MulMat(TransposeMat(out), this.layerDerivative);		
-		*/
-
 		// optimized
 		var out = [];
-        for(var j=0;j<this.input.length/2;j++)
+        for(var j=0;j<this.layerDerivative.length;j++)
         {
+			var row = [];
+			for(var i=0;i<this.layerDerivative[0].length;i++)
 			{
-				var row = [];
-				for(var i=0;i<this.layerDerivative[0].length;i++)
-				{
-					row.push( this.layerDerivative[j][i]*.5 );
-				}
-				out.push(row);
-			}
-			{
-				var row = [];
-				for(var i=0;i<this.layerDerivative[0].length;i++)
-				{
-					row.push( this.layerDerivative[j][i]*.5 );
-				}
-				out.push(row);
+				var v = this.layerDerivative[j][i];
+				out.push( [v*.5] );
+				out.push( [v*.5] );
 			}
 		}		
 
@@ -890,7 +862,6 @@ class MidPool2D
 			this.o.push(row)
         }
         
-        this.input = input;
         return this.o;
     }
 
@@ -900,17 +871,18 @@ class MidPool2D
 
         for(var y=0;y<this.layerDerivative.length;y++)
         {
-            var row = [];
+            var row1 = [];
+			var row2 = [];
 
             for(var x=0;x<this.layerDerivative[0].length;x++)
             {
                 var v = this.layerDerivative[y][x];
                 
-                row.push(v*.25);
-				row.push(v*.25);
+                row1.push(v*.25); row1.push(v*.25);
+				row2.push(v*.25); row2.push(v*.25);
             }
-			out.push(row);
-			out.push(row);
+			out.push(row1);
+			out.push(row2);
         }	
                 
         return out;		
@@ -918,10 +890,8 @@ class MidPool2D
 
     backpropInput(prev, next)
     {
-        var output = next.getErrorDer();
-
         //derivative current layer
-        this.layerDerivative  =  output;
+        this.layerDerivative  =  next.getErrorDer();
 
         // multiplied by the input
         this.deltas = [];
@@ -1102,7 +1072,6 @@ function Test_Conv1DAndMaxPoolAndFullyConnected2()
     network.push(new MidPool1D());
     network.push(new Conv1D());
     network.push(new FullyConnected(2,2));
-    //network.push(new FullyConnected(1,2));
     network.push(new OutputLayer(2,2));
 
     output = [[1,2]];
@@ -1141,9 +1110,9 @@ function Test_Conv2DDebug2()
 {
     var input = [
         [.01,.02,.03,.04],
+        [.05,.06,.07,.08],
         [.01,.02,.03,.04],
-        [.01,.02,.03,.04],
-        [.01,.02,.03,.04],
+        [.03,.02,.03,.01],
     ];
 
     var network =[]
@@ -1152,7 +1121,7 @@ function Test_Conv2DDebug2()
     network.push(new Conv2D());
 	network.push(new MidPool2D());
     network.push(new Conv2D());
-    //network.push(new Conv2D());
+    network.push(new Conv2D());
     network.push(new OutputLayer(2,2));
 
     var output = [
@@ -1270,7 +1239,7 @@ function init()
     //Test_FullyConnected()
     //Test_Conv1D()
     //Test_Conv1AndFullyConnected();
-    //Test_Conv1DAndMaxPoolAndFullyConnected2();
+    Test_Conv1DAndMaxPoolAndFullyConnected2();
     //Test_Conv2DDebug1();
 	Test_Conv2DDebug2()
     //Test_Conv1DDebug()
