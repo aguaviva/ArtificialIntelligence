@@ -846,8 +846,7 @@ class MidPool2D
 
     forwardPass(input)
     {
-        this.o = []
-    
+        this.o = []    
         for(var y=0;y<input.length/2;y++)
         {
 			var row = [];
@@ -860,8 +859,7 @@ class MidPool2D
                 row[x] = (a+b+c+d)*0.25;     // average
             }
 			this.o.push(row)
-        }
-        
+        }        
         return this.o;
     }
 
@@ -886,6 +884,76 @@ class MidPool2D
         }	
                 
         return out;		
+    }
+
+    backpropInput(prev, next)
+    {
+        //derivative current layer
+        this.layerDerivative  =  next.getErrorDer();
+
+        // multiplied by the input
+        this.deltas = [];
+        
+        return this.layerDerivative;
+    }
+
+    numericalDerivarive(network, input)
+    {
+        return [];
+    }
+}
+
+//----------------------------------------------------------------
+
+class MaxPool2D
+{
+    constructor()
+    {
+        this.name ="MaxPool 2D";
+    }
+
+    forwardPass(input)
+    {        
+		this.o = []    
+		this.errDer = [];
+        for(var y=0;y<input.length/2;y++)
+        {
+			var row = [];
+			var rowErrDer1 = [];
+			var rowErrDer2 = [];
+            for(var x=0;x<input[0].length/2;x++)
+            {
+                var a = input[y*2  ][x*2];   var b = input[y*2  ][x*2+1];
+                var c = input[y*2+1][x*2];   var d = input[y*2+1][x*2+1];
+				
+				var res = Math.max(a,Math.max(b,Math.max(c,d));
+				
+				row.push(res);
+				
+				var m = 0;
+				if (a==res) m++;
+				if (b==res) m++;
+				if (c==res) m++;
+				if (d==res) m++;
+				
+				m = 1.0/m;
+								
+				rowErrDer1.push( (a==res)?m:0 ); rowErrDer1.push( (b==res)?m:0 );
+				rowErrDer2.push( (c==res)?m:0 ); rowErrDer2.push( (d==res)?m:0 );
+            }
+			
+			this.o.push(row);
+			
+			this.errDer(rowErrDer1);
+			this.errDer(rowErrDer2);
+        }        
+		
+        return this.o;
+    }
+
+    getErrorDer()
+    {               
+        return this.errDer;		
     }
 
     backpropInput(prev, next)
