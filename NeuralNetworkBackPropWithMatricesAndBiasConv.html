@@ -161,72 +161,9 @@ function Square(v)
 {
     return MulMat(v, TransposeMat(v))
 }
-//--------------------------------------------------------
-
-function MulTensor(m1, m2)
-{
-    var O = [];
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m2[0].length;i++)
-        {
-            var tmp=SquareMatId(m2[0].length,m1.length);
-            for(var k=0;k<m1[0].length;k++)
-            {
-                tmp = AddMat(MulMat(m1[j][k], m2[k][i]), tmp);
-            }
-            O[j].push( tmp);
-        }
-    }
-    return O;
-}
-
-function SubTensor(m1, m2)
-{
-    var O = [];
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m1[0].length;i++)
-        {
-            O[j][i] = SubMat(m1[j][i], m2[j][i]);
-        }
-    }
-    return O;
-}
-
-function MulKTensor(k, m)
-{
-    var O = [];
-    for(var j=0;j<m.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m[0].length;i++)
-        {
-            O[j][i] = MulKMat(k, m[j][i]);
-        }
-    }
-    return O;
-}
-
-
-function PrintTensor(m)
-{
-    var str = "[\n";
-    for(var j=0;j<m.length;j++)
-    {	
-        for(var i=0;i<m[0].length;i++)
-        {
-            str += PrintMat(m[j][i])+ ",\n";
-        }
-    }
-    str += "]";
-    return str;
-}
 
 //--------------------------------------------------------
-
+/*
 function Act(x)
 {
     return x;//1.0/(1.0+Math.exp(-x));
@@ -236,8 +173,8 @@ function DerAct(x)
 {
     return 1;//Act(x)*(1-Act(x));
 }
+*/
 
-/*
 function Act(x)
 {
     return 1.0/(1.0+Math.exp(-x));
@@ -247,7 +184,7 @@ function DerAct(x)
 {
     return Act(x)*(1-Act(x));
 }
-*/
+
 
 function funcMat(func, m )
 {
@@ -325,7 +262,7 @@ class InputLayer
 
 class OutputLayer
 {
-    constructor(n,m)
+    constructor()
     {
         this.name ="Output";
     }
@@ -446,6 +383,12 @@ class Conv1D
         this.deltas = MulMat(deltas,this.layerDerivative);
     }
 
+	train(LearningRate)
+	{
+		this.weights = SubMat( this.weights, MulKMat(LearningRate,this.deltas));
+	}
+
+
     AddWeight(i,val)
     {
         if (i<this.weights.length)
@@ -468,7 +411,6 @@ class Conv1D
         var out = MulKMat(1.0/.0001,SubMat(outA, outB));
         return out;
     }
-
 }
 
 //----------------------------------------------------------------
@@ -497,7 +439,6 @@ function Add2DPaddingMat(input)
     b.push(Array(b[0].length).fill(0));
     return b;
 }
-
 
 //----------------------------------------------------------------
 
@@ -635,7 +576,57 @@ class Conv2D
         
         return out;
     }
+}
 
+//----------------------------------------------------------------
+
+class FeatureMap
+{
+    constructor(featureMap)
+    {
+        this.name ="Feature Map " + featureMap[0].name;
+
+		this.featureMap = featureMap;
+    }
+
+    forwardPass(input)
+    {
+		this.o = [];
+		for(var i=0;i<this.featureMap.length;i++)
+		{
+			this.o[i] = this.featureMap[i].forwardPass(input[i]);
+		}
+        return this.o;
+    }
+
+    getErrorDer()
+    {
+		out = [];
+		for(var i=0;i<this.featureMap.length;i++)
+		{
+			out[i] = this.featureMap[i].getErrorDer();
+		}
+        
+        return out;
+    }
+    
+    backpropInput(prev, next)
+    {
+		for(var i=0;i<this.featureMap.length;i++)
+		{
+			this.featureMap[i].backpropInput(prev, next);
+		}
+    }
+        
+    numericalDerivarive(network, input)
+    {
+        var out = []
+ 		for(var i=0;i<this.featureMap.length;i++)
+		{
+			outA.push(this.featureMap[i].numericalDerivarive(network, input[i]));
+		}        
+        return out;
+    }
 }
 
 //----------------------------------------------------------------
@@ -652,8 +643,8 @@ class FullyConnected
 
             for(var j=0;j<(inp+1);j++)
             {
-                //this.weights[i].push(2*Math.random()-1);
-                this.weights[i].push(j);
+                this.weights[i].push(2*Math.random()-1);
+                //this.weights[i].push(j);
             }
         }
     }
@@ -676,12 +667,15 @@ class FullyConnected
     {
         var output = next.getErrorDer();
 
-        //derivative current layer
         this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
 
-        // multiplied by the input
         this.deltas = MulMat(this.layerDerivative, TransposeMat(AddBiasOneT(prev.o)));
     }
+
+	train(LearningRate)
+	{
+		this.weights = SubMat( this.weights, MulKMat(LearningRate,this.deltas));
+	}
 
     numericalDerivarive(network, input)
     {
@@ -711,7 +705,7 @@ class MaxPool1D
 {
     constructor()
     {
-        this.name ="MaxPool";
+        this.name ="MaxPool 1D";
     }
 
     forwardPass(input)
@@ -758,10 +752,8 @@ class MaxPool1D
 
     backpropInput(prev, next)
     {
-        //derivative current layer
         this.layerDerivative  =  next.getErrorDer();
 
-        // multiplied by the input
         this.deltas = [];
         
         return this.layerDerivative;
@@ -800,7 +792,6 @@ class MidPool1D
     {
         var out = [];
 
-		// optimized
 		var out = [];
         for(var j=0;j<this.layerDerivative.length;j++)
         {
@@ -820,10 +811,8 @@ class MidPool1D
     {
         var output = next.getErrorDer();
 
-        //derivative current layer
         this.layerDerivative  =  output;
 
-        // multiplied by the input
         this.deltas = [];
         
         return this.layerDerivative;
@@ -888,10 +877,8 @@ class MidPool2D
 
     backpropInput(prev, next)
     {
-        //derivative current layer
         this.layerDerivative  =  next.getErrorDer();
 
-        // multiplied by the input
         this.deltas = [];
         
         return this.layerDerivative;
@@ -926,7 +913,7 @@ class MaxPool2D
                 var a = input[y*2  ][x*2];   var b = input[y*2  ][x*2+1];
                 var c = input[y*2+1][x*2];   var d = input[y*2+1][x*2+1];
 				
-				var res = Math.max(a,Math.max(b,Math.max(c,d));
+				var res = Math.max(a,Math.max(b,Math.max(c,d)));
 				
 				row.push(res);
 				
@@ -958,10 +945,8 @@ class MaxPool2D
 
     backpropInput(prev, next)
     {
-        //derivative current layer
         this.layerDerivative  =  next.getErrorDer();
 
-        // multiplied by the input
         this.deltas = [];
         
         return this.layerDerivative;
@@ -975,17 +960,148 @@ class MaxPool2D
 
 //----------------------------------------------------------------
 
-function ForwardPropagation(l, input)
+class Flatten
+{
+    constructor(dimIni)
+    {	
+		this.dimIni = dimIni;
+        this.name ="Flatten";
+    }
+
+    forwardPass(input)
+    {        
+		var row = []
+
+        for(var y=0;y<input.length;y++)
+        {
+            for(var x=0;x<input[0].length;x++)
+            {
+				row.push([input[y][x]]);
+            }
+        }        
+		
+		this.o = row;
+		
+		this.width = input[0].length;
+		this.height = input.length;
+		
+        return this.o;
+    }
+
+    getErrorDer()
+    {               		
+		var out = [];
+		
+		var input = this.layerDerivative;
+
+        for(var y=0;y<this.height;y++)
+        {
+			var row = [];
+            for(var x=0;x<this.width;x++)
+            {
+				row.push(input[y*this.width + x]);
+            }
+			out.push(row);
+        }        
+	
+		return out;
+    }
+
+    backpropInput(prev, next)
+    {
+        this.layerDerivative  =  next.getErrorDer();
+
+        this.deltas = [];
+        
+        return this.layerDerivative;
+    }
+
+    numericalDerivarive(network, input)
+    {
+        return [];
+    }
+}
+
+//----------------------------------------------------------------
+
+function ForwardPropagation(network, input)
 {
     var res = input
-    for(var i=0;i<l.length;i++)
+    for(var i=0;i<network.length;i++)
     {
-        res = l[i].forwardPass(res);
+        res = network[i].forwardPass(res);
     }
     return res;
 }
 
+function BackwardPropagation(network)
+{
+    for(var i=network.length-2;i>0;i--)
+    {
+      var curr = i
+      var prev = network[curr -1];
+      var next = (curr + 1)<network.length?network[curr + 1]:undefined;
+      network[curr].backpropInput(prev, next);
+    }
+}
+
+function ApplyDeltas(network, LearningRate)
+{
+    for(var i=1;i<network.length-1;i++)
+    {
+        network[i].train(LearningRate);
+    }
+}
+
+function SimpleTrain(network, input, output, LearningRate, epocsCount)
+{
+	for(var epocs=0;epocs<epocsCount;epocs++)
+	{
+		for(var i=0;i<input.length;i++)
+		{
+			network[network.length-1].setValue(output[i]);
+			
+			ForwardPropagation(network, input[i])
+			BackwardPropagation(network);
+			
+			ApplyDeltas(network, LearningRate);
+		}
+	}
+}
+
+function PrepareData(data)
+{
+	var out = []
+	for(var d=0;d<data.length;d++)
+	{
+		var dd = [];
+		for(var i=0;i<data[d].length;i++)
+			dd.push([data[d][i]]);
+		
+		out.push(dd);
+	}
+	return out;
+}
+
+function Train1()
+{
+    var input = PrepareData([[0,0],[1,0],[0,1],[1,1]]);
+	var output = PrepareData([[0],[1],[1],[0]]);
+	
+    var network =[]
+    network.push(new InputLayer());
+    network.push(new FullyConnected(4,2));
+    network.push(new FullyConnected(1,4));
+    network.push(new OutputLayer());
+
+	SimpleTrain(network, input, output, .1, 10000);
+	
+	for(var i=0;i<input.length;i++)
+		Print(PrintMat(ForwardPropagation(network, input[i])));
+}
+
 //----------------------------------------------------------------
+
 function Print(str)
 {
     document.getElementById("text").innerHTML += str;
@@ -997,8 +1113,6 @@ function TestNetwork(network, input, output)
 
     Print("<pre>---------------------------------</pre>");
 
-    //
-
     ForwardPropagation(network, TransposeMat(input))
     for(var i=0;i<network.length;i++)
     {
@@ -1008,21 +1122,13 @@ function TestNetwork(network, input, output)
 
     Print("<pre>---------------------------------</pre>");
 
-    var str = "";
-    str += "<table><tr><td>";
+    var str = "<table><tr><td>analytical</td><td>numerical</td></tr><tr><td>";
 
-    //
-    for(var i=network.length-2;i>0;i--)
-    {
-      var curr = i
-      var prev = network[curr -1];
-      var next = (curr + 1)<network.length?network[curr + 1]:undefined;
-      network[curr].backpropInput(prev, next);
-    }
+	BackwardPropagation(network);
 
     for(var i=1;i<network.length-1;i++)
     {
-        str += "<pre>Analytical pass "+i+" '" + network[i].name + "'</pre>";
+        str += "<pre>"+i+" '" + network[i].name + "'</pre>";
         str += "<pre>"+PrintMat(network[i].deltas)+"</pre>";
     }
 
@@ -1031,7 +1137,7 @@ function TestNetwork(network, input, output)
     //numerical derivative
     for(var i=1;i<network.length-1;i++)
     {
-        str += "<pre>Numerical Derivative "+i+"</pre>";
+        str += "<pre>"+i+" '" + network[i].name + "'</pre>";
         var c = network[i].numericalDerivarive(network, input);
         str += "<pre>"+PrintMat(c)+"</pre>";
     }
@@ -1053,7 +1159,7 @@ function Test_FullyConnected()
     network.push(new FullyConnected(4,4));
     network.push(new FullyConnected(2,4));
     network.push(new FullyConnected(1,2));
-    network.push(new OutputLayer(1,1));
+    network.push(new OutputLayer());
 
     output = [[1]]
 
@@ -1069,7 +1175,7 @@ function Test_Conv1D()
     network.push(new InputLayer());
     network.push(new Conv1D());
     network.push(new Conv1D());
-    network.push(new OutputLayer(1,2));
+    network.push(new OutputLayer());
 
     output = [[1,0]]
 
@@ -1085,7 +1191,7 @@ function Test_Conv1DDebug()
     network.push(new InputLayer());
     network.push(new Conv1D());
     network.push(new Conv1D());    
-    network.push(new OutputLayer(2,2));
+    network.push(new OutputLayer());
 
     output = [[1,2]]
 
@@ -1102,7 +1208,7 @@ function Test_Conv1DDebug4()
     network.push(new Conv1D());
     network.push(new Conv1D());
     network.push(new Conv1D());
-    network.push(new OutputLayer(4,4));
+    network.push(new OutputLayer());
 
     output = [[1,20,3,20]]
 
@@ -1120,7 +1226,7 @@ function Test_Conv1DAndFullyConnected()
     network.push(new MidPool1D());
     network.push(new FullyConnected(2,2));
     network.push(new FullyConnected(1,2));
-    network.push(new OutputLayer(1,1));
+    network.push(new OutputLayer());
 
     output = [[1]];
 
@@ -1140,7 +1246,7 @@ function Test_Conv1DAndMaxPoolAndFullyConnected2()
     network.push(new MidPool1D());
     network.push(new Conv1D());
     network.push(new FullyConnected(2,2));
-    network.push(new OutputLayer(2,2));
+    network.push(new OutputLayer());
 
     output = [[1,2]];
 
@@ -1162,7 +1268,7 @@ function Test_Conv2DDebug1()
     network.push(new Conv2D());
     network.push(new Conv2D());
     network.push(new Conv2D());
-    network.push(new OutputLayer(4,4));
+    network.push(new OutputLayer());
 
     var output = [
         [0,0,0,0],
@@ -1190,7 +1296,7 @@ function Test_Conv2DDebug2()
 	network.push(new MidPool2D());
     network.push(new Conv2D());
     network.push(new Conv2D());
-    network.push(new OutputLayer(2,2));
+    network.push(new OutputLayer());
 
     var output = [
         [0,0],
@@ -1200,6 +1306,30 @@ function Test_Conv2DDebug2()
     TestNetwork(network, input, output)
 }
 
+function Test_Conv2DDebug3()
+{
+    var input = [
+        [.01,.02,.03,.04],
+        [.05,.06,.07,.08],
+        [.01,.02,.03,.04],
+        [.03,.02,.03,.01],
+    ];
+
+    var network =[]
+
+    network.push(new InputLayer());
+    network.push(new Conv2D());
+	network.push(new Flatten());
+    network.push(new FullyConnected(1, 16));
+
+    network.push(new OutputLayer());
+
+    var output = [ [
+	1
+    ]];
+
+    TestNetwork(network, input, output)
+}
 
 class Road
 {    
@@ -1217,7 +1347,6 @@ class Road
         
         this.ctx.closePath();
         this.ctx.stroke(); 
-        
     }
 
     Clear()
@@ -1233,7 +1362,6 @@ class Road
         this.ctx.moveTo(this.ToX(x1),this.ToY(y1)); 
         this.ctx.lineTo(this.ToX(x2),this.ToY(y2)); 
     }
-
 
     Draw()
     {
@@ -1288,7 +1416,6 @@ class Road
         
         this.ctx.closePath();
         this.ctx.stroke(); 
-        
     }    
 }
 
@@ -1300,16 +1427,18 @@ function init()
     context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,300);
     GraphAxis();
+	Train1();
     //setInterval(iterate,10);
-    //ConvTest()
+    Test_Conv1D()
     //MaxPool1DTest()
     //ConvMaxPoolTest()
     //Test_FullyConnected()
     //Test_Conv1D()
     //Test_Conv1AndFullyConnected();
-    Test_Conv1DAndMaxPoolAndFullyConnected2();
+    //Test_Conv1DAndMaxPoolAndFullyConnected2();
     //Test_Conv2DDebug1();
-	Test_Conv2DDebug2()
+	//Test_Conv2DDebug2();
+	Test_Conv2DDebug3();
     //Test_Conv1DDebug()
     //Test_Conv1DDebug4()
     
