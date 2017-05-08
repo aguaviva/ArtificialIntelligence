@@ -12,8 +12,8 @@
 <style type="text/css">
 <!--
 body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
-h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
-#container { width:600px; margin:0 auto; }
+h1 { display:block; width:800px; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30px Georgia, "Times New Roman", Times, serif; color:#333; text-shadow: 1px 2px 3px #ccc; border-bottom:1px solid #cbcbcb; }
+#container { width:800px; margin:0 auto; }
 #myCanvas { background:#fff; border:1px solid #cbcbcb; }
 #nav { display:block; width:100%; text-align:center; }
 #nav li { display:block; font-weight:bold; line-height:21px; text-shadow:1px 1px 1px #fff; width:100px; height:21px; paddVing:5px; margin:0 10px; background:#e0e0e0; border:1px solid #ccc; -moz-border-radius:4px;-webkit-border-radius:4px; border-radius:4px; float:left; }
@@ -28,7 +28,7 @@ function RandomMat(inp,neurons)
     var L = []
     for(var i=0;i<neurons;i++)
     {
-        L[i] = [];
+        L[i] = [];7
         for(var j=0;j<inp;j++)
         {
             L[i].push(2*Math.random()-1);
@@ -42,7 +42,17 @@ function PrintMat(m)
     var str = "";//"[\n";
     for(var j=0;j<m.length;j++)
     {
-        str += "[" + m[j].join(",") + "]\n";
+	
+		var round = [];
+		
+		for(var i=0;i<m[j].length;i++)
+		{
+			round.push(m[j][i].toFixed(4))
+		}
+		str += "[" + round.join(",") + "]\n";
+		
+        //str += "[" + m[j].join(",") + "]\n";
+		
     }
     //str += "]";
     return str;
@@ -78,13 +88,34 @@ function MulMat(m1, m2)
         {
             var tmp=0;
             for(var k=0;k<m1[0].length;k++)
-            {
-                tmp += (m1[j][k] * m2[k][i]);
+            {				
+				var v = (m1[j][k] * m2[k][i]);
+				
+                tmp += v;
             }
             O[j].push( tmp);
         }
     }
     return O;
+}
+
+function CheckMat(m, msg)
+{
+	var l = m[0].length;
+    for(var j=0;j<m.length;j++)
+	{
+		if (l!=m[j].length)
+			alert("caca");
+			
+		for(var i=0;i<m[j].length;i++)
+		{
+			if (typeof m[j][i] !="number")
+			{
+				console.log(msg+"\n "+  m[j][i]);		
+				debugger;
+			}
+		}		
+	}
 }
 
 function TransposeMat(m)
@@ -163,6 +194,7 @@ function Square(v)
 }
 
 //--------------------------------------------------------
+
 /*
 function Act(x)
 {
@@ -185,6 +217,31 @@ function DerAct(x)
     return Act(x)*(1-Act(x));
 }
 
+/*
+function Act(x)
+{
+    return Math.max(0,x);
+}
+
+function DerAct(x)
+{
+    return (x>0)?1:0;
+}
+*/
+
+//softplus 
+function Act(x)
+{
+    return Math.log( 1 + Math.exp(x));
+}
+
+function DerAct(x)
+{
+    return 1.0/(1.0 + Math.exp(-x));
+}
+
+
+//--------------------------------------------------------
 
 function funcMat(func, m )
 {
@@ -235,12 +292,6 @@ function AddBiasOneT(vin)
     vout.push( Array(vout[0].length).fill(1) );
     return vout;
 }
-
-
-//-------------------------------
-
-var wl_i1 = RandomMat(2+1,4);  //read from 3, ilayer is 4, the +1 is because of the bias
-var wl_12 = RandomMat(4+1,1);
 
 //----------------------------------------------------------------
 
@@ -305,7 +356,6 @@ class OutputLayer
 function Conv1DInputForward(input, weights, bias, padding)
 {
     out = []
-
     for(var y=0;y<input.length-weights.length+ padding;y++)
     {
         var o = bias;
@@ -325,8 +375,8 @@ class Conv1D
 {
     constructor()
     {
-        this.weights = [1,2,3];
-        this.bias = 1;
+        this.weights = [.1,.2,-.3];
+        this.bias = .1;
         this.padding = 1;
         this.name ="Conv";
     }
@@ -349,10 +399,12 @@ class Conv1D
             var o=0;
             for(var i=0;i<this.weights.length;i++)
             {
-                o += input[x+i] * this.weights[this.weights.length-1 - i];
+                o += input[x+i][0] * this.weights[this.weights.length-1 - i];
             }
             m[x] = [ o ] ;           
         }
+
+		CheckMat(m,"errorder");
 
         return m;
     }
@@ -369,25 +421,34 @@ class Conv1D
             deltas[i]=[]
         }
 
-        var input = Add1DPaddingMat(prev.o)
+        var input = Add1DPaddingMat(prev.o) 
 
         for(var y=0;y<input.length-this.weights.length+ this.padding;y++)
         {
             for(var j=0;j<this.weights.length;j++)
             {
-                deltas[j][y] = input[y+j];
+                deltas[j][y] = input[y+j][0];
             }
             deltas[this.weights.length].push(1);
         }
-
+		
+		CheckMat(deltas,"deltas");
+		CheckMat(this.layerDerivative,"derivative");
+		
         this.deltas = MulMat(deltas,this.layerDerivative);
     }
 
 	train(LearningRate)
 	{
-		this.weights = SubMat( this.weights, MulKMat(LearningRate,this.deltas));
+		var weights = this.weights.slice(0);
+		weights.push(this.bias);
+		weights = [weights];
+		var deltas = SubMat( weights, TransposeMat((MulKMat(LearningRate,this.deltas))));
+		
+		this.weights = deltas[0].slice(0,3);
+		this.bias = deltas[0][3];
+		//this.weights 
 	}
-
 
     AddWeight(i,val)
     {
@@ -489,7 +550,6 @@ class Conv2D
     getErrorDer()
     {
         var input = Add2DPaddingMat(this.layerDerivative)
-
         out = []
 
         for(var y=0;y<input[0].length -this.weights[0].length+ this.padding; y++)
@@ -691,7 +751,7 @@ class FullyConnected
                 this.weights[j][i] -= .0001
                 vB.push(ForwardPropagation(network, TransposeMat(input)))
             }
-            var c = MulKMat(1.0/.0001,SubMat(vA, vB));
+            var c = MulKMat(1.0/.0001,TransposeMat(SubMat(vA, vB)))[0];
 
             out.push(c)
         }
@@ -713,21 +773,33 @@ class MaxPool1D
         this.o = Array(input.length/2).fill(0)
         this.index = Array(input.length/2).fill(0)
     
+		this.errDer = [];
         for(var i=0;i<input.length/2;i++)
         {
             var a = input[i*2][0];
             var b = input[i*2 +1][0];
             this.o[i] = [Math.max(a,b)];
+						
+			var row = Array(input.length).fill(0);
+            if (a>b)
+            {
+                row[2*i] = 1;
+            }
+            else
+            {
+                row[2*i+1] = 1;
+            }
+			this.errDer.push(row);
         }
-        
+		
         this.input = input;
         return this.o;
     }
 
     getErrorDer()
     {
+		/*
         var out = [];
-
         for(var i=0;i<this.input.length/2;i++)
         {
             var row = Array(this.input.length).fill(0);
@@ -745,7 +817,8 @@ class MaxPool1D
             
             out.push(row);
         }	
-        
+		*/
+        out = this.errDer;
         
         return MulMat(TransposeMat(out), this.layerDerivative);		
     }
@@ -759,6 +832,8 @@ class MaxPool1D
         return this.layerDerivative;
     }
 
+	train(LearningRate) {};
+	
     numericalDerivarive(network, input)
     {
         return [];
@@ -815,8 +890,10 @@ class MidPool1D
 
         this.deltas = [];
         
-        return this.layerDerivative;
-    }
+        return this.layerDerivative;    
+	}
+	
+	train(LearningRate) {};
 
     numericalDerivarive(network, input)
     {
@@ -1053,20 +1130,47 @@ function ApplyDeltas(network, LearningRate)
     }
 }
 
-function SimpleTrain(network, input, output, LearningRate, epocsCount)
+function SimpleTrain(network, input, output, LearningRate, epocsCount, iters)
 {
-	for(var epocs=0;epocs<epocsCount;epocs++)
+	var t0 = performance.now();
+	
+	for(var l=0;l<iters;l++)
 	{
-		for(var i=0;i<input.length;i++)
+		for(var epocs=0;epocs<epocsCount;epocs++)
 		{
-			network[network.length-1].setValue(output[i]);
-			
-			ForwardPropagation(network, input[i])
-			BackwardPropagation(network);
-			
-			ApplyDeltas(network, LearningRate);
+			for(var i=0;i<input.length;i++)
+			{
+				network[network.length-1].setValue(output[i]);
+				
+				ForwardPropagation(network, input[i])
+				BackwardPropagation(network);
+				
+				ApplyDeltas(network, LearningRate);
+			}
 		}
+	
+	Print(CalcError(network, input, output).toFixed(4) + " : ");
+	
+	/*
+	for(var i=0;i<input.length;i++)
+		Print(PrintMat(ForwardPropagation(network, input[i])));
+	*/
+	Print("<br>");
 	}
+	
+	var t1 = performance.now();
+	Print("time: " + (t1 - t0) + " milliseconds.<br>");
+}
+
+function CalcError(network, input, output)
+{
+	var totalErr = 0;
+	for(var i=0;i<input.length;i++)
+	{
+		var err = SubMat(ForwardPropagation(network, input[i]), output[i]);
+		totalErr += MulMat(err, TransposeMat(err))[0][0];
+	}
+	return totalErr;
 }
 
 function PrepareData(data)
@@ -1083,8 +1187,9 @@ function PrepareData(data)
 	return out;
 }
 
-function Train1()
+function Train_XOR()
 {
+	Print("Learning a xor:<br><br>");
     var input = PrepareData([[0,0],[1,0],[0,1],[1,1]]);
 	var output = PrepareData([[0],[1],[1],[0]]);
 	
@@ -1094,10 +1199,110 @@ function Train1()
     network.push(new FullyConnected(1,4));
     network.push(new OutputLayer());
 
-	SimpleTrain(network, input, output, .1, 10000);
+	SimpleTrain(network, input, output, .1, 100,10);		
 	
-	for(var i=0;i<input.length;i++)
-		Print(PrintMat(ForwardPropagation(network, input[i])));
+    Print("<pre>---------------------------------</pre>");
+}
+
+function generate_SIN(size, freq, offset)
+{
+	var v = Array(size).fill(0)
+	for(var t=0;t<size;t++)
+	{
+		v[t] = Math.sin((2*3.1415)*(freq+1)*((t+offset)/size));
+	}
+	return v;
+}
+
+function generate_SIN_training(size)
+{
+	var input = [];
+	var output = [];
+	
+	for(var offset=0;offset<5;offset++)
+	{
+		for(var f=0;f<size;f++)
+		{
+			var v = generate_SIN(size, f, offset);
+			input.push(v);
+			output.push((f==0)?[1]:[0]);
+		}
+		
+		{
+			var v = Array(size).fill(0)
+			for(var i=0;i<size;i++)
+			{
+				v[i]=i;
+			}
+			input.push(v);
+			output.push([0]);
+		}		
+
+		{
+			var v = Array(size).fill(0)
+			for(var i=0;i<size;i++)
+			{
+				v[i]=2*Math.random()-1;
+			}
+			input.push(v);
+			output.push([0]);
+		}		
+
+		
+	}	
+	
+	return [input, output];
+}
+
+function Train_SIN_fully()
+{	
+	Print("Learning a sin fully:<br><br>");
+	
+	var trainingSet = generate_SIN_training(10);
+	
+    var inputPrep = PrepareData(trainingSet[0]);
+	var outputPrep = PrepareData(trainingSet[1]);
+	
+    var network =[]
+    network.push(new InputLayer());
+    network.push(new FullyConnected(5,trainingSet.length));
+    network.push(new FullyConnected(1,5));
+    network.push(new OutputLayer());
+
+	SimpleTrain(network, inputPrep, outputPrep, .1, 200, 10);		
+	
+    Print("<pre>---------------------------------</pre>");
+}
+
+function Train_SIN_conv()
+{	
+	Print("Learning a sin conv:<br><br>");
+	
+	var trainingSet = generate_SIN_training(20);
+
+    var inputPrep = trainingSet[0];
+	var outputPrep = PrepareData(trainingSet[1]);
+	
+	for(var i=0;i<inputPrep.length;i++)
+	{
+		inputPrep[i] = TransposeMat([inputPrep[i]]);
+	}
+	
+    var network =[]
+    network.push(new InputLayer());
+    network.push(new Conv1D());    
+	network.push(new MidPool1D());
+	//network.push(new MaxPool1D());
+    network.push(new Conv1D());    
+	network.push(new MidPool1D());
+	//network.push(new MaxPool1D());
+	
+    network.push(new FullyConnected(1,5));
+    network.push(new OutputLayer());
+
+	SimpleTrain(network, inputPrep, outputPrep, .1, 200, 10);		
+	
+    Print("<pre>---------------------------------</pre>");
 }
 
 //----------------------------------------------------------------
@@ -1110,8 +1315,6 @@ function Print(str)
 function TestNetwork(network, input, output)
 {
     network[network.length-1].setValue(TransposeMat(output));
-
-    Print("<pre>---------------------------------</pre>");
 
     ForwardPropagation(network, TransposeMat(input))
     for(var i=0;i<network.length;i++)
@@ -1217,7 +1420,7 @@ function Test_Conv1DDebug4()
 
 function Test_Conv1DAndFullyConnected()
 {
-    var input = [[5,2]];
+    var input = [[5,2,1,2]];
 
     var network =[]
 
@@ -1419,17 +1622,18 @@ class Road
     }    
 }
 
-
-
 function init()
 {
     var myCanvas = document.getElementById("myCanvas");
     context = myCanvas.getContext('2d');
     context.clearRect(0,0,600,300);
     GraphAxis();
-	Train1();
+	//Train_XOR();
+	//Test_Conv1DAndFullyConnected();
+	Train_SIN_fully();
+	Train_SIN_conv();
     //setInterval(iterate,10);
-    Test_Conv1D()
+    //Test_Conv1D()
     //MaxPool1DTest()
     //ConvMaxPoolTest()
     //Test_FullyConnected()
@@ -1438,7 +1642,7 @@ function init()
     //Test_Conv1DAndMaxPoolAndFullyConnected2();
     //Test_Conv2DDebug1();
 	//Test_Conv2DDebug2();
-	Test_Conv2DDebug3();
+	//Test_Conv2DDebug3();
     //Test_Conv1DDebug()
     //Test_Conv1DDebug4()
     
