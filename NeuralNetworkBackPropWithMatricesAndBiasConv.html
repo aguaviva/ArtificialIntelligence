@@ -509,7 +509,7 @@ class Conv2D
 {
     constructor()
     {
-        this.weights = [ [-.1,.2,.3], [.1,.2,-.3], [.1,-.2,.3] ];
+        this.weights = [ [-.1,.3,.2], [.1,.2,-.3], [.3,-.2,.1] ];
         this.bias = .1;
         this.padding = 1;
         this.name ="Conv2D";
@@ -559,7 +559,7 @@ class Conv2D
                 {
                     for(var j=0;j<this.weights.length;j++)
                     {
-                        deltas[j + i * this.weights.length][x + y * prev.o.length] = input[y+j][x+i];
+                        deltas[i + j * this.weights.length][x + y * prev.o.length] = input[y+j][x+i];
                     }
                 }
                 deltas[this.weights.length*this.weights.length].push(1);
@@ -572,7 +572,7 @@ class Conv2D
     AddWeight(i,val)
     {
         if (i<this.weights.length*this.weights.length)
-            this.weights[Math.floor(i/3)][i%3]+=val
+            this.weights[i%3][Math.floor(i/3)]+=val
         else
             this.bias+=val
     }
@@ -703,7 +703,7 @@ class Conv3D
 					{							
 						for(var i=0;i<this.weights[0][0].length;i++)
 						{
-							deltas[j + i * this.weights.length + k * this.weights.length* this.weights[0].length][x + y * prev.o.length] = input[k+1][y+j][x+i];
+							deltas[i + j * this.weights.length + k * this.weights.length* this.weights[0].length][x + y * prev.o.length] = input[k+1][y+j][x+i];
 						}
 					}
 				}
@@ -718,8 +718,8 @@ class Conv3D
     {
         if (i<this.weights.length*this.weights[0].length*this.weights[0][0].length)
 		{
-			var x = i % 3;
-			var y = Math.floor(i/3) % 3;
+			var y = i % 3;
+			var x = Math.floor(i/3) % 3;
 			var z = Math.floor(i/9) % 3;
 		
             this.weights[z][y][x]+=val
