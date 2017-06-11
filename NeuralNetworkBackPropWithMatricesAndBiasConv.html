@@ -58,7 +58,7 @@ function PrintMat(m)
     return str;
 }
 
-function SquareMat(dimX, dimY)
+function RectangularMat(dimX, dimY)
 {
     var O = [];
     for(var i=0;i<dimY;i++)
@@ -70,7 +70,7 @@ function SquareMat(dimX, dimY)
 
 function MatId(dimX, value)
 {
-    var v = SquareMatId(dimX, dimX, value);
+    var v = RectangularMat(dimX, dimX, value);
     
     for(var i=0;i<dimY;i++)
     {
@@ -451,14 +451,14 @@ function ReverseKernel2D(kernel)
 {
     var m = [];
     for(var j=0;j<kernel.length;j++)
-        m[j] = kernel[kernel.length-1 - j].slice().reverse();
+        m[j] = ReverseKernel1D(kernel[kernel.length-1 - j]);
     return m;
 }
 
 function Add2DPaddingMat(input, padding)
 {
     var b = [];
-    
+    	   
     for(var i=0;i<input.length;i++)
     {
         var l = input[i].slice(0);
@@ -466,13 +466,13 @@ function Add2DPaddingMat(input, padding)
 			l.unshift(0);
 		for(var j=0;j<padding;j++)
 			l.push(0);
-        b[i] = l;
+        b[i+padding] = l;
     }
     
 	for(var j=0;j<padding;j++)
-		b.unshift(Array(b[0].length).fill(0));
+		b[j] = Array(b[padding].length).fill(0);	
 	for(var j=0;j<padding;j++)
-		b.push(Array(b[0].length).fill(0));
+		b[input.length+padding+j] = Array(b[padding].length).fill(0);
 		
     return b;
 }
@@ -595,52 +595,152 @@ class Conv2D
 }
 
 //----------------------------------------------------------------
-
-class FeatureMap
+function Add3DPaddingMat(input, padding)
 {
-    constructor(featureMap)
+	b = [];
+	
+	for(var i=0;i<padding;i++)
+		b[i] = RectangularMat(input.length + 2*padding, input[i].length + 2*padding);
+	
+    for(var i=0;i<input.length;i++)
     {
-        this.name ="Feature Map " + featureMap[0].name;
+		b[i+padding] = Add2DPaddingMat(input[i], padding);
+	}
+	
+	for(var i=0;i<padding;i++)
+		b[input.length + padding + i] = RectangularMat(input.length + 2*padding, input[i].length + 2*padding);
 
-        this.featureMap = featureMap;
+	return b;
+}
+
+function ReverseKernel3D(kernel)
+{
+    var m = [];
+    for(var j=0;j<kernel.length;j++)
+        m[j] = ReverseKernel2D(kernel[kernel.length-1 - j]);
+    return m;
+}
+
+function Conv3DInputForward(Input, weights, bias, padding)
+{
+	var out = Conv2DInputForward(Input[0], weights[0], bias, padding);
+	for(var n=1;n<Input.length;n++)
+	{
+		var slice = Conv2DInputForward(Input[n], weights[n], 0, padding);  //only the first one uses the bias
+		
+        for(var y=0;y<slice.length;y++)
+        {            
+			for(var x=0;x<slice[0].length;x++)
+            {
+                out[y][x] += slice[y][x];
+            }
+        }
+		
+	}
+    
+    return out;
+}
+
+//----------------------------------------------------------------
+
+class Conv3D
+{
+    constructor()
+    {
+        this.weights = [
+		[ [-.1,.2,.3], [.1,.2,-.3], [.1,-.2,.3] ],
+		[ [-.1,.2,.3], [-.1,.2,-.3], [.1,-.2,.3] ],
+		[ [-.1,.2,-.3], [.1,.2,-.3], [.1,-.2,-.3] ],
+		];
+        this.bias = .1;
+        this.padding = 1;
+        this.name ="Conv3D";
     }
 
     forwardPass(input)
     {
-        this.o = [];
-        for(var i=0;i<this.featureMap.length;i++)
-        {
-            this.o[i] = this.featureMap[i].forwardPass(input[i]);
-        }
+        this.net = Conv3DInputForward(input, this.weights, this.bias, this.padding)
+        this.o = funcMat(Act, this.net)
         return this.o;
     }
 
     getErrorDer()
-    {
-        out = [];
-        for(var i=0;i<this.featureMap.length;i++)
-        {
-            out[i] = this.featureMap[i].getErrorDer();
-        }
-        
-        return out;
+    {		
+        var revKernel = ReverseKernel3D(this.weights)
+        return  Conv3DInputForward(this.layerDerivative, revKernel, 0, this.padding)
     }
     
     backpropInput(prev, next)
     {
-        for(var i=0;i<this.featureMap.length;i++)
+        var output = next.getErrorDer();
+
+        this.layerDerivative = SimpleMulMat(funcMat(DerAct, this.net), output);
+
+        var ld = [];
+        for(var x=0;x<this.layerDerivative.length;x++)
         {
-            this.featureMap[i].backpropInput(prev, next);
+            for(var y=0;y<this.layerDerivative.length;y++)
+            {
+                ld[x+y*this.layerDerivative.length] = [this.layerDerivative[y][x]];
+            }
         }
+		
+        var deltas = []
+        for(var i=0;i<this.weights.length*this.weights[0].length*this.weights[0][0].length+1;i++)
+        {
+            deltas[i]=[]
+        }
+
+        var input = Add3DPaddingMat(prev.o, this.padding)
+
+		for(var y=0;y<input.length-this.weights.length+ this.padding;y++)
+		{
+			for(var x=0;x<input.length-this.weights.length+ this.padding;x++)
+			{			
+				for(var k=0;k<this.weights.length;k++)
+				{
+					for(var j=0;j<this.weights[0].length;j++)
+					{							
+						for(var i=0;i<this.weights[0][0].length;i++)
+						{
+							deltas[j + i * this.weights.length + k * this.weights.length* this.weights[0].length][x + y * prev.o.length] = input[k+1][y+j][x+i];
+						}
+					}
+				}
+				deltas[this.weights.length*this.weights[0].length*this.weights[0][0].length].push(1);
+			}
+		}
+        
+        this.deltas = MulMat(deltas,ld);
     }
         
+    AddWeight(i,val)
+    {
+        if (i<this.weights.length*this.weights[0].length*this.weights[0][0].length)
+		{
+			var x = i % 3;
+			var y = Math.floor(i/3) % 3;
+			var z = Math.floor(i/9) % 3;
+		
+            this.weights[z][y][x]+=val
+		}
+        else
+            this.bias+=val
+    }
+
     numericalDerivarive(network, input)
     {
-        var out = []
- 		for(var i=0;i<this.featureMap.length;i++)
+        var outA = []
+        var outB = []
+        for(var i=0;i<this.weights.length*this.weights[0].length*this.weights[0][0].length+1;i++)
         {
-            outA.push(this.featureMap[i].numericalDerivarive(network, input[i]));
-        }        
+            this.AddWeight(i,.0001)
+            outA.push(ForwardPropagation(network, TransposeMat(input)))
+            this.AddWeight(i,-.0001)
+            outB.push(ForwardPropagation(network, TransposeMat(input)))
+        }
+        var out = MulKMat(1.0/.0001,SubMat(outA, outB));
+        
         return out;
     }
 }
@@ -784,8 +884,6 @@ class MaxPool1D
         this.layerDerivative  =  next.getErrorDer();
 
         this.deltas = [];
-        
-        return this.layerDerivative;
     }
 
     train(LearningRate) {};
@@ -845,8 +943,6 @@ class MidPool1D
         this.layerDerivative  =  output;
 
         this.deltas = [];
-        
-        return this.layerDerivative;    
     }
     
     train(LearningRate) {};
@@ -913,8 +1009,6 @@ class MidPool2D
         this.layerDerivative  =  next.getErrorDer();
 
         this.deltas = [];
-        
-        return this.layerDerivative;
     }
 
     numericalDerivarive(network, input)
@@ -981,8 +1075,6 @@ class MaxPool2D
         this.layerDerivative  =  next.getErrorDer();
 
         this.deltas = [];
-        
-        return this.layerDerivative;
     }
 
     numericalDerivarive(network, input)
@@ -1045,14 +1137,116 @@ class Flatten
         this.layerDerivative  =  next.getErrorDer();
 
         this.deltas = [];
-        
-        return this.layerDerivative;
     }
 
     numericalDerivarive(network, input)
     {
         return [];
     }
+}
+
+//----------------------------------------------------------------
+
+class CombineFeatureMaps
+{
+    constructor(featureMap)
+    {
+        this.name ="CombineFeatureMaps";
+
+        this.featureMap = featureMap;
+    }
+
+    forwardPass(input)
+    {
+        this.o = [];
+        for(var i=0;i<this.featureMap.length;i++)
+        {
+            this.o[i] = this.featureMap[i].forwardPass(input);
+        }
+        return this.o;
+    }
+
+    getErrorDer()
+    {
+        out = [];
+        for(var i=0;i<this.featureMap.length;i++)
+        {
+            out[i] = this.featureMap[i].getErrorDer();
+        }
+        
+        return out;
+    }
+    
+    backpropInput(prev, next)
+    {
+		this.layerDerivative  =  next.getErrorDer();
+		this.deltas = [];
+    }
+        
+    numericalDerivarive(network, input)
+    {
+        var out = []
+ 		for(var i=0;i<this.featureMap.length;i++)
+        {
+            outA.push(this.featureMap[i].numericalDerivarive(network, input[i]));
+        }        
+        return out;
+    }
+}
+
+//----------------------------------------------------------------
+
+class PackLayers
+{
+    constructor()
+    {	
+        this.name ="PackLayers";
+		this.layers = []
+    }
+
+	setLayers(layers) 
+	{ 
+		this.layers = layers;
+	};
+
+    forwardPass(input)
+    {        
+		var res = input
+		for(var i=0;i<this.layers.length;i++)
+		{
+			res = this.layers[i].forwardPass(res);
+		}
+		
+		this.o = res;
+		
+		return res;	
+	}
+	
+    getErrorDer()
+    {               		
+		return this.layers[0].getErrorDer();
+	}
+	
+    backpropInput(prev, next)
+    {
+		for(var i=this.layers.length-1;i>=0;i--)
+		{
+			var curr = i
+			var prev = (curr == 0)                    ? prev: this.layers[curr - 1];
+			var next = (curr == this.layers.length-1) ? next: this.layers[curr + 1];
+			this.layers[curr].backpropInput(prev, next);
+		}
+		
+		this.layerDerivative  =  this.layers[this.layers.length-1].layerDerivative;
+		
+		this.deltas = [];
+	}		
+	
+    numericalDerivarive(network, input)
+    {
+        return [];
+    }
+	
 }
 
 //----------------------------------------------------------------
@@ -1075,12 +1269,13 @@ function ForwardPropagation(network, input)
     {
         res = network[i].forwardPass(res);
     }
+	
     return res;
 }
 
 function BackwardPropagation(network)
 {
-    for(var i=network.length-2;i>0;i--)
+    for(var i=network.length-1;i>0;i--)
     {
       var curr = i
       var prev = network[curr -1];
@@ -1153,6 +1348,9 @@ function PrepareData(data)
     }
     return out;
 }
+
+//--------------------------------------------------------------------
+
 
 //--------------------------------------------------------------------
 
@@ -1270,15 +1468,17 @@ function Print(str)
     document.getElementById("text").innerHTML += str;
 }
 
-function TestNetwork(network, input, output)
+function TestNetwork(network, input, output, inputLayer)
 {
-    network[network.length-1].setValue(TransposeMat(output));
+	network[network.length-1].setValue(TransposeMat(output));
 
     ForwardPropagation(network, TransposeMat(input))
     for(var i=0;i<network.length;i++)
     {
         Print("<pre>"+i+") Forward pass: "+network[i].name+"</pre>");
-        Print("<pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>");
+		
+		if (network[i].name!="CombineFeatureMaps")		
+			Print("<pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>");
     }
 
     Print("<pre>---------------------------------</pre>");
@@ -1370,12 +1570,37 @@ function Test_Conv1DDebug4()
     network.push(new Conv1D());
     network.push(new Conv1D());
     network.push(new Conv1D());
+    network.push(new Conv1D());
     network.push(new OutputLayer());
 
     output = [[1,20,3,20]]
 
     TestNetwork(network, input, output)
 }
+
+function Test_pack()
+{
+
+	var p = new PackLayers()
+	p.setLayers( [ new Conv1D(), new Conv1D() ] )
+	
+    var input = [[1,2,3,4]];
+
+    var network =[]
+
+    network.push(new InputLayer());
+    network.push(new Conv1D());
+    network.push(p);
+    network.push(new Conv1D());
+    network.push(new OutputLayer());
+
+    output = [[1,20,3,20]]
+
+    TestNetwork(network, input, output)
+
+
+}
+
 
 function Test_Conv1DAndFullyConnected()
 {
@@ -1477,7 +1702,7 @@ function Test_Conv2DDebug3()
         [.03,.02,.03,.01],
     ];
 
-    var network =[]
+    var network = []
 
     network.push(new InputLayer());
     network.push(new Conv2D());
@@ -1492,6 +1717,41 @@ function Test_Conv2DDebug3()
 
     TestNetwork(network, input, output)
 }
+
+function Train_3dConv()
+{
+    var input = [
+			[.01,.02,.03],
+			[.05,.06,.07],
+			[.01,.02,.03],
+    ];
+
+	var il = new InputLayer();
+
+	var p1 = new PackLayers();
+	p1.setLayers( [ il, new Conv2D() ])
+	var p2 = new PackLayers();
+	p1.setLayers( [ il, new Conv2D() ])
+	var p3 = new PackLayers();
+	p1.setLayers( [ il, new Conv2D() ])
+
+	var cfm = new CombineFeatureMaps([p1,p2,p3]);
+
+	var network = []
+    network.push(cfm);
+	network.push(new Conv3D());
+	network.push(new Flatten());
+    network.push(new FullyConnected(1, 3*3));
+    network.push(new OutputLayer());
+
+    var output = [ [
+    1
+    ]];
+
+    TestNetwork(network, input, output, il)
+}
+
+
 
 function Test_LearnSin()
 {
@@ -1520,6 +1780,7 @@ function Test_LearnSin()
     g.DrawArray(output_full,"#ff0000");
     g.DrawArray(output_conv,"#00ff00");
 }
+
 
 class Road
 {    
@@ -1714,9 +1975,6 @@ function init()
     //Train_XOR();
     //Test_Conv1DAndFullyConnected();
     // Test_LearnSin();
-
-    
-    
     //setInterval(iterate,10);
     //Test_Conv1D()
     //MaxPool1DTest()
@@ -1724,7 +1982,11 @@ function init()
     //Test_FullyConnected()
     //Test_Conv1DPool()
     //Test_Conv1DAndMaxPoolAndFullyConnected2();
-    Test_Conv2DDebug1();
+    
+	//Test_Conv1DDebug4();
+	//Test_pack();
+	Train_3dConv();
+	//Test_Conv2DDebug1();
     //Test_Conv2DDebug2();
     //Test_Conv2DDebug3();
     //Test_Conv1DDebug()
