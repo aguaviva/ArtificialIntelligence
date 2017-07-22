@@ -3,12 +3,6 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>Neural network back prop, with matrix fomulation</title>
-<script type="text/javascript"
-  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
-</script>
-<script type="text/x-mathjax-config">
-  MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
-</script>
 <style type="text/css">
 <!--
 body { background-color:#ededed; font:norm2al 12px/18px Arial, Helvetica, sans-serif; }
@@ -22,6 +16,105 @@ h1 { display:block; width:800px; margin:20px auto; paddVing-bottom:20px; font:no
 </style>
 </head>
 <script>
+
+class Graph
+{    
+    SetElement(element)
+    {
+        this.context = element.getContext('2d');
+    }
+    
+    Clear()
+    {
+        this.context.clearRect(0,0,600,300);
+    }
+
+    map(x1,x2,x)
+    {
+        return (x-x1)/(x2-x1);
+    }
+
+    interpol(a,b,t)
+    {
+        return (1-t)*a + (t)*b;
+    }
+
+    AxisX(x1,x2, step) 
+    { 
+        this.x1 = x1;
+        this.x2 = x2;
+        this.stepX = step;
+    }
+
+    AxisY(y1,y2) 
+    { 
+        this.y1 = y1;
+        this.y2 = y2;
+    }
+
+    ToViewportX(x)
+    {
+        var t = this.map(this.x1,this.x2,x)
+        return this.interpol(0,800,t);
+    }
+
+    ToViewportY(y)
+    {
+        var t = this.map(this.y1,this.y2,y)
+        return this.interpol(0,300,t);
+    }
+
+    Line(x1,y1,x2,y2)
+    {
+        x1 = this.ToViewportX(x1);
+        y1 = this.ToViewportY(y1);
+        x2 = this.ToViewportX(x2);
+        y2 = this.ToViewportY(y2);
+        this.context.moveTo(x1,y1);
+        this.context.lineTo(x2,y2);	
+    }
+    
+    Print(x,y, str)
+    {
+        x = this.ToViewportX(x);
+        y = this.ToViewportY(y);
+        this.context.fillText(str,x,y);
+    }
+    
+    DrawAxis()
+    {
+        this.context.beginPath();
+        this.context.strokeStyle="#000000";
+        this.Line(this.x1,0,this.x2,0);
+        this.Line(0,this.y1,0,this.y2);
+        this.context.closePath();
+        this.context.stroke();
+        
+        this.context.beginPath();
+        for(var i=0;i<160;i+=this.stepX)
+        {
+            this.Line(i,0,i,-.025);
+            this.Print(i,-.05, i);		
+        }
+        this.context.closePath();
+        this.context.stroke();
+        
+    }
+    
+    DrawArray(a, color)
+    {
+        this.context.beginPath();
+        this.context.strokeStyle=color;
+        for(var x = 0;x<a.length-1;x++)
+        {		
+            this.Line(x, a[x], x+1,a[x+1]);
+        }
+        this.context.closePath();
+        this.context.stroke();
+    }	
+}
+
+//---------------------------------------------------------------------
 
 function RandomMat(inp,neurons)
 {
@@ -193,7 +286,7 @@ function Square(v)
     return MulMat(v, TransposeMat(v))
 }
 
-//--------------------------------------------------------
+//---------------------------------------------------------------------
 
 /*
 function Act(x)
@@ -242,7 +335,7 @@ function DerAct(x)
 }
 */
 
-//--------------------------------------------------------
+//---------------------------------------------------------------------
 
 function funcMat(func, m )
 {
@@ -258,18 +351,7 @@ function funcMat(func, m )
     return O;
 }
 
-//--------------------------------------------------------
-
-// this helps taking care of the bias
-function AddBiasOneT(vin)
-{
-    var vout = [].concat(vin);
-
-    vout.push( Array(vout[0].length).fill(1) );
-    return vout;
-}
-
-//----------------------------------------------------------------
+//---------------------------------------------------------------------
 
 class InputLayer
 {
@@ -287,11 +369,11 @@ class InputLayer
 
 //----------------------------------------------------------------
 
-class OutputLayer
+class QuadraticCostLayer
 {
     constructor()
     {
-        this.name ="Output";
+        this.name ="Quadratic cost";
     }
 
     setValue(v)
@@ -304,9 +386,9 @@ class OutputLayer
         this.diff = SubMat(input, this.value);
                 
         var err = 0;
-        for(var j=0;j<this.diff.length;j++)
+        for(var j=0;j<this.diff[0].length;j++)
         {	
-            for(var i=0;i<this.diff[0].length;i++)
+            for(var i=0;i<this.diff.length;i++)
             {
                 err += this.diff[j][i] * this.diff[j][i];
             }
@@ -320,6 +402,61 @@ class OutputLayer
     getErrorDer()
     {
         return MulKMat(2,this.diff);
+    }
+
+    backpropInput( prev, next)
+    {
+    }
+}
+
+class CrossEntropyQuadraticCostLayer
+{
+    constructor()
+    {
+        this.name ="Cross Entropy cost";		
+    }
+
+    setValue(v)
+    {
+        this.value = v;
+    }
+
+    forwardPass(input)
+    {
+        var err = 0;
+		var n=0
+        for(var j=0;j<input.length;j++)
+        {	
+            for(var i=0;i<input[0].length;i++)
+            {
+				var _i = this.value[i][j]
+				var _o = input[i][j] 				
+				
+                err -= _i*Math.log(_o) + (1-_i)*Math.log(1-_o);
+				n++;
+            }
+        }	
+
+        this.o = [[err/n]];
+        
+        return this.o;
+    }
+
+    getErrorDer()
+    {
+		var num = SubMat(input, this.value);
+		
+		var deno = 0;		
+        for(var j=0;j<input.length;j++)
+        {	
+            for(var i=0;i<input[0].length;i++)
+            {
+				var _o = input[i][j] 
+				deno += (1.0-_o)*_o
+			}
+		}
+		
+        return MulKMat(1.0/deno,num);
     }
 
     backpropInput( prev, next)
@@ -718,8 +855,8 @@ class Conv3D
     {
         if (i<this.weights.length*this.weights[0].length*this.weights[0][0].length)
 		{
-			var y = i % 3;
 			var x = Math.floor(i/3) % 3;
+			var y = i % 3;			
 			var z = Math.floor(i/9) % 3;
 		
             this.weights[z][y][x]+=val
@@ -749,25 +886,35 @@ class Conv3D
 
 class FullyConnected
 {
-    constructor(neurons, inp)
+    constructor(neurons, inp, weights)
     {
         this.name ="Fully";
         this.weights = []
+		this.bias = []
         for(var i=0;i<neurons;i++)
         {
-            this.weights[i] = [];
+			if (weights!=undefined)
+			{
+				this.weights = weights
+			}
+			else
+			{
+				this.weights[i] = [];
 
-            for(var j=0;j<(inp+1);j++)
-            {
-                this.weights[i].push(2*Math.random()-1);
-                //this.weights[i].push(j);
-            }
+				for(var j=0;j<inp;j++)
+				{
+					this.weights[i].push(2*Math.random()-1);
+				}
+			}
+			
+			this.bias.push([2*Math.random()-1]);
         }
     }
 
     forwardPass(input)
     {
-        this.net = MulMat(this.weights, AddBiasOneT(input))
+		this.net = MulMat(this.weights, input)
+		this.net = AddMat(this.bias, this.net)
         this.o = funcMat(Act, this.net)
         return this.o;
     }
@@ -782,10 +929,8 @@ class FullyConnected
     backpropInput(prev, next)
     {
         var output = next.getErrorDer();
-
         this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
-
-        this.deltas = MulMat(this.layerDerivative, TransposeMat(AddBiasOneT(prev.o)));
+		this.deltas = MulMat(this.layerDerivative, TransposeMat(prev.o));
     }
 
     train(LearningRate)
@@ -1364,9 +1509,14 @@ function Train_XOR()
     network.push(new InputLayer());
     network.push(new FullyConnected(4,2));
     network.push(new FullyConnected(1,4));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
-    SimpleTrain(network, input, output, .1, 100,10);		
+
+	network[network.length-1].setValue(output[1]);
+	ForwardPropagation(network, input[1])
+	DumpWeights(network)
+
+    //SimpleTrain(network, input, output, .1, 100,10);		
     
     Print("<pre>---------------------------------</pre>");
 }
@@ -1429,7 +1579,7 @@ function Train_SIN_fully(trainingSet)
     network.push(new InputLayer());
     network.push(new FullyConnected(5,trainingSet.length));
     network.push(new FullyConnected(1,5));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
     
     SimpleTrain(network, trainingSet[0], trainingSet[1], .1, 200, 10);		
     
@@ -1452,7 +1602,7 @@ function Train_SIN_conv(trainingSet)
     //network.push(new MaxPool1D());
     
     network.push(new FullyConnected(1,4));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     SimpleTrain(network, trainingSet[0], trainingSet[1], .1, 200, 10);		
     
@@ -1466,6 +1616,20 @@ function Train_SIN_conv(trainingSet)
 function Print(str)
 {
     document.getElementById("text").innerHTML += str;
+}
+
+function DumpWeights(network)
+{
+    for(var i=0;i<network.length;i++)
+    {
+		Print("<pre>Layer: "+network[i].name+"</pre>");
+		if (network[i].weights!=undefined)
+			Print("<pre>weights: <pre>"+PrintMat(TransposeMat(network[i].weights))+"</pre>");
+		if (network[i].bias!=undefined)
+			Print("<pre>bias: <pre>"+PrintMat(TransposeMat(network[i].bias))+"</pre>");
+		if (network[i].o!=undefined)
+			Print("<pre>output: <pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>");
+	}
 }
 
 function TestNetwork(network, input, output, inputLayer)
@@ -1520,7 +1684,7 @@ function Test_FullyConnected()
     network.push(new FullyConnected(4,4));
     network.push(new FullyConnected(2,4));
     network.push(new FullyConnected(1,2));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1]]
 
@@ -1537,7 +1701,7 @@ function Test_Conv1DPool()
     network.push(new Conv1D());
     //network.push(new MidPool1D());
     network.push(new MaxPool1D());
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1]]
 
@@ -1553,7 +1717,7 @@ function Test_Conv1DDebug()
     network.push(new InputLayer());
     network.push(new Conv1D());
     network.push(new Conv1D());    
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1,2]]
 
@@ -1571,7 +1735,7 @@ function Test_Conv1DDebug4()
     network.push(new Conv1D());
     network.push(new Conv1D());
     network.push(new Conv1D());
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1,20,3,20]]
 
@@ -1592,7 +1756,7 @@ function Test_pack()
     network.push(new Conv1D());
     network.push(p);
     network.push(new Conv1D());
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1,20,3,20]]
 
@@ -1613,7 +1777,7 @@ function Test_Conv1DAndFullyConnected()
     network.push(new MidPool1D());
     network.push(new FullyConnected(2,2));
     network.push(new FullyConnected(1,2));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1]];
 
@@ -1633,7 +1797,7 @@ function Test_Conv1DAndMaxPoolAndFullyConnected2()
     network.push(new MidPool1D());
     network.push(new Conv1D());
     network.push(new FullyConnected(2,2));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     output = [[1,2]];
 
@@ -1655,7 +1819,7 @@ function Test_Conv2DDebug1()
     network.push(new Conv2D());
     network.push(new Conv2D());
     network.push(new Conv2D());
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     var output = [
         [0,0,0,0],
@@ -1683,7 +1847,7 @@ function Test_Conv2DDebug2()
     network.push(new MidPool2D());
     network.push(new Conv2D());
     network.push(new Conv2D());
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     var output = [
         [0,0],
@@ -1709,7 +1873,7 @@ function Test_Conv2DDebug3()
     network.push(new Flatten());
     network.push(new FullyConnected(1, 16));
 
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     var output = [ [
     1
@@ -1742,7 +1906,7 @@ function Train_3dConv()
 	network.push(new Conv3D());
 	network.push(new Flatten());
     network.push(new FullyConnected(1, 3*3));
-    network.push(new OutputLayer());
+    network.push(new QuadraticCostLayer());
 
     var output = [ [
     1
@@ -1779,6 +1943,30 @@ function Test_LearnSin()
     }	
     g.DrawArray(output_full,"#ff0000");
     g.DrawArray(output_conv,"#00ff00");
+}
+
+function Train_XOR_TF()
+{
+    Print("Learning a xor:<br><br>");
+    var input = PrepareData([[0,0],[0,1],[1,0],[1,1]]);
+    var output = PrepareData([[0],[1],[1],[0]]);
+
+    var network =[]
+    network.push(new InputLayer());
+    network.push(new FullyConnected(2,2));
+    network.push(new FullyConnected(1,2));
+	network.push(new CrossEntropyQuadraticCostLayer());
+	
+	network[1].weights = TransposeMat([[-0.60878801, -0.94027829], [-0.27013826, -0.48769999]])		
+	network[1].bias = TransposeMat([[0,0] ])		
+	network[2].weights = TransposeMat([[ 0.74871302], [0.86548233]])
+	network[2].bias = TransposeMat([[0]])
+
+	network[network.length-1].setValue(output[1]);
+	ForwardPropagation(network, input[1])
+	DumpWeights(network)
+    
+    Print("<pre>---------------------------------</pre>");
 }
 
 
@@ -1870,109 +2058,12 @@ class Road
     }    
 }
 
-class Graph
-{
-    
-    SetElement(element)
-    {
-        this.context = element.getContext('2d');
-    }
-    
-    Clear()
-    {
-        this.context.clearRect(0,0,600,300);
-    }
-
-    map(x1,x2,x)
-    {
-        return (x-x1)/(x2-x1);
-    }
-
-    interpol(a,b,t)
-    {
-        return (1-t)*a + (t)*b;
-    }
-
-    AxisX(x1,x2, step) 
-    { 
-        this.x1 = x1;
-        this.x2 = x2;
-        this.stepX = step;
-    }
-
-    AxisY(y1,y2) 
-    { 
-        this.y1 = y1;
-        this.y2 = y2;
-    }
-
-    ToViewportX(x)
-    {
-        var t = this.map(this.x1,this.x2,x)
-        return this.interpol(0,800,t);
-    }
-
-    ToViewportY(y)
-    {
-        var t = this.map(this.y1,this.y2,y)
-        return this.interpol(0,300,t);
-    }
-
-    Line(x1,y1,x2,y2)
-    {
-        x1 = this.ToViewportX(x1);
-        y1 = this.ToViewportY(y1);
-        x2 = this.ToViewportX(x2);
-        y2 = this.ToViewportY(y2);
-        this.context.moveTo(x1,y1);
-        this.context.lineTo(x2,y2);	
-    }
-    
-    Print(x,y, str)
-    {
-        x = this.ToViewportX(x);
-        y = this.ToViewportY(y);
-        this.context.fillText(str,x,y);
-    }
-    
-    DrawAxis()
-    {
-        this.context.beginPath();
-        this.context.strokeStyle="#000000";
-        this.Line(this.x1,0,this.x2,0);
-        this.Line(0,this.y1,0,this.y2);
-        this.context.closePath();
-        this.context.stroke();
-        
-        this.context.beginPath();
-        for(var i=0;i<160;i+=this.stepX)
-        {
-            this.Line(i,0,i,-.025);
-            this.Print(i,-.05, i);		
-        }
-        this.context.closePath();
-        this.context.stroke();
-        
-    }
-    
-    DrawArray(a, color)
-    {
-        this.context.beginPath();
-        this.context.strokeStyle=color;
-        for(var x = 0;x<a.length-1;x++)
-        {		
-            this.Line(x, a[x], x+1,a[x+1]);
-        }
-        this.context.closePath();
-        this.context.stroke();
-    }	
-}
 
 function init()
 {
     var myCanvas = document.getElementById("myCanvas");    
     
-    //Train_XOR();
+    Train_XOR();
     //Test_Conv1DAndFullyConnected();
     // Test_LearnSin();
     //setInterval(iterate,10);
@@ -1985,7 +2076,8 @@ function init()
     
 	//Test_Conv1DDebug4();
 	//Test_pack();
-	Train_3dConv();
+	Train_XOR_TF();
+	//Train_3dConv();
 	//Test_Conv2DDebug1();
     //Test_Conv2DDebug2();
     //Test_Conv2DDebug3();
