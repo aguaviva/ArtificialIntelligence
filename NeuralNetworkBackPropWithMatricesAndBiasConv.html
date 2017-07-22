@@ -129,7 +129,7 @@ function RandomMat(inp,neurons)
     }
     return L;
 }
-
+/*
 function PrintMat(m)
 {
     var str = "";//"[\n";
@@ -148,6 +148,23 @@ function PrintMat(m)
         
     }
     //str += "]";
+    return str;
+}
+*/
+
+function PrintMat(m)
+{
+    var str = "<pre><table>";
+    for(var j=0;j<m.length;j++)
+    {
+		str += "<tr><td>[</td>";
+        for(var i=0;i<m[j].length;i++)
+        {			
+            str += "<td>" + m[j][i].toFixed(4) + "</td>";
+        }
+        str += "<td>]</td></tr>";
+    }
+    str += "</table></pre>";
     return str;
 }
 
@@ -423,6 +440,8 @@ class CrossEntropyQuadraticCostLayer
 
     forwardPass(input)
     {
+		this.input = input;
+		
         var err = 0;
 		var n=0
         for(var j=0;j<input.length;j++)
@@ -444,14 +463,14 @@ class CrossEntropyQuadraticCostLayer
 
     getErrorDer()
     {
-		var num = SubMat(input, this.value);
+		var num = SubMat(this.input, this.value);
 		
 		var deno = 0;		
-        for(var j=0;j<input.length;j++)
+        for(var j=0;j<this.input.length;j++)
         {	
-            for(var i=0;i<input[0].length;i++)
+            for(var i=0;i<this.input[0].length;i++)
             {
-				var _o = input[i][j] 
+				var _o = this.input[i][j] 
 				deno += (1.0-_o)*_o
 			}
 		}
@@ -886,26 +905,17 @@ class Conv3D
 
 class FullyConnected
 {
-    constructor(neurons, inp, weights)
+    constructor(neurons, inp)
     {
         this.name ="Fully";
         this.weights = []
 		this.bias = []
         for(var i=0;i<neurons;i++)
         {
-			if (weights!=undefined)
-			{
-				this.weights = weights
-			}
-			else
-			{
-				this.weights[i] = [];
+			this.weights[i] = [];
 
-				for(var j=0;j<inp;j++)
-				{
-					this.weights[i].push(2*Math.random()-1);
-				}
-			}
+			for(var j=0;j<inp;j++)
+				this.weights[i].push(2*Math.random()-1);
 			
 			this.bias.push([2*Math.random()-1]);
         }
@@ -915,27 +925,29 @@ class FullyConnected
     {
 		this.net = MulMat(this.weights, input)
 		this.net = AddMat(this.bias, this.net)
-        this.o = funcMat(Act, this.net)
+        this.o   = funcMat(Act, this.net)
         return this.o;
     }
 
     getErrorDer()
     {
         var t = TransposeMat(this.weights)
-        t.splice(t.length-1,1);
         return MulMat(t, this.layerDerivative);
     }
 
     backpropInput(prev, next)
     {
         var output = next.getErrorDer();
-        this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
-		this.deltas = MulMat(this.layerDerivative, TransposeMat(prev.o));
+		var sigmaDerNet = funcMat(DerAct, this.net);
+        this.layerDerivative = SimpleMulMat(sigmaDerNet, output);
+		this.weightDeltas = MulMat(this.layerDerivative, TransposeMat(prev.o));
+		this.biasDeltas   = this.layerDerivative;
     }
 
     train(LearningRate)
     {
-        this.weights = SubMat( this.weights, MulKMat(LearningRate,this.deltas));
+        this.weights = SubMat( this.weights, MulKMat(LearningRate,this.weightDeltas));
+		this.bias    = SubMat( this.bias,    MulKMat(LearningRate,this.biasDeltas));
     }
 
     numericalDerivarive(network, input)
@@ -956,6 +968,23 @@ class FullyConnected
 
             out.push(c)
         }
+
+        for(var j=0;j<this.bias.length;j++)
+        {
+            var vA = []
+            var vB = []
+            for(var i=0;i<this.bias[0].length;i++)
+            {
+                this.bias[j][i] += .0001
+                vA.push(ForwardPropagation(network, TransposeMat(input)))
+                this.bias[j][i] -= .0001
+                vB.push(ForwardPropagation(network, TransposeMat(input)))
+            }
+            var c = MulKMat(1.0/.0001,TransposeMat(SubMat(vA, vB)))[0];
+
+            out.push(c)
+        }
+
         return out;
     }
 }
@@ -1391,7 +1420,6 @@ class PackLayers
     {
         return [];
     }
-	
 }
 
 //----------------------------------------------------------------
@@ -1512,11 +1540,11 @@ function Train_XOR()
     network.push(new QuadraticCostLayer());
 
 
-	network[network.length-1].setValue(output[1]);
-	ForwardPropagation(network, input[1])
-	DumpWeights(network)
+	//network[network.length-1].setValue(output[1]);
+	//ForwardPropagation(network, input[1])
+	//DumpWeights(network)
 
-    //SimpleTrain(network, input, output, .1, 100,10);		
+    SimpleTrain(network, input, output, .1, 1000,10);		
     
     Print("<pre>---------------------------------</pre>");
 }
@@ -1619,16 +1647,35 @@ function Print(str)
 }
 
 function DumpWeights(network)
-{
+{	
     for(var i=0;i<network.length;i++)
     {
-		Print("<pre>Layer: "+network[i].name+"</pre>");
+		out = ""
+		out +="<table>";
+		
+		out +="<tr>";
+		out +="<td>layer</td>";
 		if (network[i].weights!=undefined)
-			Print("<pre>weights: <pre>"+PrintMat(TransposeMat(network[i].weights))+"</pre>");
+			out +="<td>weights</td>";
 		if (network[i].bias!=undefined)
-			Print("<pre>bias: <pre>"+PrintMat(TransposeMat(network[i].bias))+"</pre>");
+			out +="<td>bias</td>";
 		if (network[i].o!=undefined)
-			Print("<pre>output: <pre>"+PrintMat(TransposeMat(network[i].o))+"</pre>");
+			out +="<td>output</td>";
+		out +="</tr>";
+		
+		out +="<tr>";
+		out +="<td>"+network[i].name+"</td>";
+		if (network[i].weights!=undefined)
+			out +="<td>"+PrintMat(TransposeMat(network[i].weights))+"</td>";
+		if (network[i].bias!=undefined)
+			out +="<td>"+PrintMat(TransposeMat(network[i].bias))+"</td>";
+		if (network[i].o!=undefined)
+			out +="<td>"+PrintMat(TransposeMat(network[i].o))+"</td>";		
+		out +="<tr>";
+		
+		out +="</table>";
+		
+		Print(out)
 	}
 }
 
@@ -1637,7 +1684,7 @@ function TestNetwork(network, input, output, inputLayer)
 	network[network.length-1].setValue(TransposeMat(output));
 
     ForwardPropagation(network, TransposeMat(input))
-    for(var i=0;i<network.length;i++)
+    for(var i=1;i<network.length;i++)
     {
         Print("<pre>"+i+") Forward pass: "+network[i].name+"</pre>");
 		
@@ -1654,7 +1701,8 @@ function TestNetwork(network, input, output, inputLayer)
     for(var i=1;i<network.length-1;i++)
     {
         str += "<pre>"+i+" '" + network[i].name + "'</pre>";
-        str += "<pre>"+PrintMat(network[i].deltas)+"</pre>";
+        str += "<pre>"+PrintMat(network[i].weightDeltas)+"</pre>";
+		str += "<pre>"+PrintMat(network[i].biasDeltas)+"</pre>";
     }
 
     str += "</td><td>";
@@ -1744,7 +1792,6 @@ function Test_Conv1DDebug4()
 
 function Test_pack()
 {
-
 	var p = new PackLayers()
 	p.setLayers( [ new Conv1D(), new Conv1D() ] )
 	
@@ -1761,8 +1808,6 @@ function Test_pack()
     output = [[1,20,3,20]]
 
     TestNetwork(network, input, output)
-
-
 }
 
 
@@ -1915,8 +1960,6 @@ function Train_3dConv()
     TestNetwork(network, input, output, il)
 }
 
-
-
 function Test_LearnSin()
 {
     var trainingSet = generate_SIN_training(16);
@@ -1947,7 +1990,7 @@ function Test_LearnSin()
 
 function Train_XOR_TF()
 {
-    Print("Learning a xor:<br><br>");
+    Print("Learning a xor TF:<br><br>");
     var input = PrepareData([[0,0],[0,1],[1,0],[1,1]]);
     var output = PrepareData([[0],[1],[1],[0]]);
 
@@ -1955,17 +1998,27 @@ function Train_XOR_TF()
     network.push(new InputLayer());
     network.push(new FullyConnected(2,2));
     network.push(new FullyConnected(1,2));
-	network.push(new CrossEntropyQuadraticCostLayer());
+	network.push(new QuadraticCostLayer());
+	//network.push(new CrossEntropyQuadraticCostLayer());
 	
 	network[1].weights = TransposeMat([[-0.60878801, -0.94027829], [-0.27013826, -0.48769999]])		
 	network[1].bias = TransposeMat([[0,0] ])		
 	network[2].weights = TransposeMat([[ 0.74871302], [0.86548233]])
 	network[2].bias = TransposeMat([[0]])
+/*
+	for(var i=0;i<10;i++)
+	{
+		network[network.length-1].setValue(output[1]);
+		ForwardPropagation(network, input[1])
+		DumpWeights(network)
+		BackwardPropagation(network);
+		LearningRate = 0.01
+		ApplyDeltas(network, LearningRate);
+	}    
+*/	
+	TestNetwork(network, input, output)
 
-	network[network.length-1].setValue(output[1]);
-	ForwardPropagation(network, input[1])
-	DumpWeights(network)
-    
+	
     Print("<pre>---------------------------------</pre>");
 }
 
@@ -2063,7 +2116,7 @@ function init()
 {
     var myCanvas = document.getElementById("myCanvas");    
     
-    Train_XOR();
+    //Train_XOR();
     //Test_Conv1DAndFullyConnected();
     // Test_LearnSin();
     //setInterval(iterate,10);
