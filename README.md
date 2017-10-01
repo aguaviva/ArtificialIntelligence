@@ -10,7 +10,6 @@ Experimenting with AI (Just some notes for me and my friends regarding AI.)
 5. [Same as 4 but generalized to support other training sets](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/GenericDistRegression.html)
 5. [Adding minibatch to #4](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatricesAndBiasMiniBatch.html)
 6. [MNIST Hand written recognition, net structure: 784x15x10](http://aguaviva.github.io/ai/MnistNonConv.html)
-7. [OO library that implements a 1D conv, a maxpool and a fully connected layer](http://aguaviva.github.io/ai/NeuralNetworkBackPropWithMatricesAndBiasConv.html)
 
 ### To do:
 1. Make the samples more beautiful
