@@ -355,8 +355,6 @@ function iterate()
        
     var totalErr;
     
-    var netResponses = []
-    
     for(var j=0;j<10;j++)
     {
         totalErr = 0;
@@ -370,14 +368,11 @@ function iterate()
             var net2 = MulMat(wl_12, o1); 
             var o2   = funcMat(Act, net2);
 
-            netResponses[i] = o2;
-
-            err = SubMat(o2, setTarget[i]);
-            
             //back propagate
             //
             
             // outer layer
+            var err = SubMat(o2, setTarget[i]);
             var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
             var e2   = MulMat(sp2, TransposeMat(o1));
             

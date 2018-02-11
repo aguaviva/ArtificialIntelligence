@@ -410,7 +410,6 @@ $$\frac{\partial{H}}{\partial{f}}  = \sigma'(net_H) \frac{\partial{(net_H)}}{\pa
 $$\frac{\partial{I}}{\partial{g}}  = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{g}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot G)}}{\partial{g}} = \sigma'(net_I) F$$
 $$\frac{\partial{I}}{\partial{h}}  = \sigma'(net_I) \frac{\partial{(net_I)}}{\partial{h}} =\sigma'(net_I)  \frac{\partial{(g\cdot F+h\cdot G)}}{\partial{h}} = \sigma'(net_I) G$$
 
-
 Starting from the output we immediatelly see a jacobian:
 
 $$\begin{pmatrix}\frac{\partial{H}}{\partial{e}} & \frac{\partial{H}}{\partial{f}} \\ 
@@ -442,7 +441,7 @@ $$\frac{\partial{I}}{\partial{d}} = \sigma'(net_I) \frac{\partial{(net_I)}}{\par
 
 Now we have all the ingredients to train our network:
 
-First we need a forward pass, we take the output and we compute how far are we from the target result $t_1 and t_2$:
+First we need a forward pass, we take the output and we compute how far are we from the target result $t_1$ and $t_2$:
 
 $$Error = (H-t_1)^2 + (I-t_2)^2$$
 
