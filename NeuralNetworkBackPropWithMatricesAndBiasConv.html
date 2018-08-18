@@ -254,15 +254,20 @@ function ConvertMat(m, x,y)
 
 //---------------------------------------------------------------------
 
-function Act(x)
+class ActIdentity
 {
-    return x;//1.0/(1.0+Math.exp(-x));
+    Act(x)
+    {
+        return x;//1.0/(1.0+Math.exp(-x));
+    }
+
+    DerAct(x)
+    {
+        return 1;//Act(x)*(1-Act(x));
+    }
 }
 
-function DerAct(x)
-{
-    return 1;//Act(x)*(1-Act(x));
-}
+
 
 /*
 function Act(x)
@@ -275,17 +280,19 @@ function DerAct(x)
     return Act(x)*(1-Act(x));
 }
 */
-/*
-function Act(x)
-{
-    return Math.max(0,x);
-}
 
-function DerAct(x)
+class ActReLu
 {
-    return (x>0)?1:0;
+    Act(x)
+    {
+        return Math.max(0,x);
+    }
+
+    DerAct(x)
+    {
+        return (x>0)?1:0;
+    }
 }
-*/
 /*
 //softplus 
 function Act(x)
@@ -514,6 +521,7 @@ class Conv1D
 {
     constructor()
     {
+        this.act = act
         this.weights = [.1,.2,-.3];
         this.bias = 0;
         this.padding = 1;
@@ -524,7 +532,7 @@ class Conv1D
     {
         this.input = input;
         this.net = Conv1DInputForward(input, this.weights, this.bias, this.padding)
-        return funcMat(Act, this.net)
+        return funcMat(this.act.Act, this.net)
     }
 
     getDerivative()
@@ -535,7 +543,7 @@ class Conv1D
 
     backpropInput(output)
     {
-        this.layerDerivative  =  SimpleMulMat(funcMat(DerAct, this.net), output);
+        this.layerDerivative  =  SimpleMulMat(funcMat(this.act.DerAct, this.net), output);
 
         var deltas = []
         for(var i=0;i<this.weights.length+1;i++)
@@ -656,8 +664,9 @@ function Conv2DInputForward(nonPaddedInput, weights, bias, padding)
 
 class Conv2D
 {
-    constructor(weights, bias)
+    constructor(weights, bias, act)
     {
+        this.act = act
         this.weights = weights[0][0];
         this.bias = bias;
         this.padding = 1;
@@ -668,7 +677,7 @@ class Conv2D
     {
         this.input = input;
         this.net = Conv2DInputForward(input, this.weights, this.bias, this.padding)
-        return funcMat(Act, this.net)
+        return funcMat(this.act.Act, this.net)
     }
 
     getDerivative()
@@ -679,7 +688,7 @@ class Conv2D
     
     backpropInput(output)
     {
-        this.layerDerivative = SimpleMulMat(funcMat(DerAct, this.net), output);
+        this.layerDerivative = SimpleMulMat(funcMat(this.act.DerAct, this.net), output);
 
         var ld = [];
         
@@ -757,8 +766,9 @@ class Conv2D
 
 class Conv3D
 {
-    constructor(weights, bias)
+    constructor(weights, bias, act)
     {
+        this.act = act;
         this.weights = weights[0];
         this.kernelDim = weights[0][0].length
         this.bias = bias;
@@ -769,26 +779,26 @@ class Conv3D
     forwardPass(input)
     {
         this.input = input;
-        this.fmIn = this.weights.length;
+        this.depth = this.weights.length;
         
         this.net = Conv2DInputForward(input[0], this.weights[0], this.bias, this.padding)
-        for(var k=1;k<this.fmIn;k++)
+        for(var k=1;k<this.depth;k++)
             this.net = AddMat(this.net, Conv2DInputForward(input[k], this.weights[k], 0, this.padding))
         
-        return funcMat(Act, this.net)
+        return funcMat(this.act.Act, this.net)
     }
     
     getDerivative()
     {   
         var v = Conv2DInputForward(this.layerDerivative, ReverseKernel2D(this.weights[0]), this.bias, this.padding)
-        for(var k=1;k<this.fmIn;k++)
+        for(var k=1;k<this.depth;k++)
             v = AddMat(v, Conv2DInputForward(this.layerDerivative, ReverseKernel2D(this.weights[k]), 0, this.padding));
         return  v;
     }
     
     backpropInput(output)
     {
-        this.layerDerivative = SimpleMulMat(funcMat(DerAct, this.net), output);
+        this.layerDerivative = SimpleMulMat(funcMat(this.act.DerAct, this.net), output);
         var ld = [];
         
         for(var y=0;y<this.layerDerivative.length;y++)
@@ -802,13 +812,13 @@ class Conv3D
         var weights = this.weights[0];
  
         var deltas = []
-        for(var i=0;i<this.fmIn*weights.length*weights[0].length+1;i++)
+        for(var i=0;i<this.depth*weights.length*weights[0].length+1;i++)
         {
             deltas[i]=[]
         }
         
         var input = [];
-        for(var k=0;k<this.fmIn;k++)
+        for(var k=0;k<this.depth;k++)
         {
             input[k] = Add2DPaddingMat(this.input[k], this.padding)
         }        
@@ -819,7 +829,7 @@ class Conv3D
         {
             for(var x=0;x<xx;x++)
             {
-                for(var k=0;k<this.fmIn;k++)
+                for(var k=0;k<this.depth;k++)
                 {                                       
                     for(var j=0;j<weights.length;j++)
                     {
@@ -829,20 +839,20 @@ class Conv3D
                         }
                     }
                 }
-                deltas[this.fmIn*weights.length*weights[0].length].push(1);
+                deltas[this.depth*weights.length*weights[0].length].push(1);
             }
         }
         
         var deltas = MulMat(deltas,ld);
         this.weightDeltas = []
-        for(var k=0;k<this.fmIn;k++)
+        for(var k=0;k<this.depth;k++)
             this.weightDeltas[k] = ConvertMat(deltas.slice(k*this.kernelDim*this.kernelDim, (k+1)*this.kernelDim*this.kernelDim), this.kernelDim,this.kernelDim);
         this.biasDeltas   = deltas[deltas.length-1][0]
     }
         
     train(LearningRate)
     {
-        for(var k=0;k<this.fmIn;k++)
+        for(var k=0;k<this.depth;k++)
             this.weights[k] = SubMat( this.weights[k], MulKMat(LearningRate,this.weightDeltas[k]));
         this.bias    = this.bias - LearningRate * this.biasDeltas;
     }        
@@ -875,8 +885,9 @@ class Conv3D
 
 class ConvFM
 {
-    constructor(weights, bias)
+    constructor(weights, bias, act)
     {
+        this.act = act;
         this.weights = weights;
         this.bias = bias;
         this.name ="ConvFM";
@@ -885,7 +896,7 @@ class ConvFM
         this.conv3D = []
         for(var k=0;k<this.weights.length;k++)
         {            
-            this.conv3D[k] = new Conv3D([this.weights[k]], bias[k]);
+            this.conv3D[k] = new Conv3D([this.weights[k]], bias[k], act);
             this.bias[k] = this.conv3D[k].bias
         }
     }
@@ -971,8 +982,9 @@ class ConvFM
 
 class FullyConnected
 {
-    constructor(weights, bias)
+    constructor(weights, bias, act)
     {
+        this.act = act
         this.name ="Fully";
         this.weights = weights
         this.bias = bias
@@ -983,7 +995,7 @@ class FullyConnected
         this.input = input;
         this.net = MulMat(input, this.weights )
         this.net = AddMat(this.bias, this.net)
-        return funcMat(Act, this.net)        
+        return funcMat(this.act.Act, this.net)        
     }
 
     getDerivative()
@@ -994,7 +1006,7 @@ class FullyConnected
 
     backpropInput(output)
     {
-        var sigmaDerNet = funcMat(DerAct, this.net);
+        var sigmaDerNet = funcMat(this.act.DerAct, this.net);
         this.layerDerivative = SimpleMulMat(sigmaDerNet, output);
         
         // for training
@@ -1044,211 +1056,6 @@ class FullyConnected
         }
 
         return out;
-    }
-}
-
-//----------------------------------------------------------------
-
-class MaxPool1D
-{
-    constructor()
-    {
-        this.name ="MaxPool 1D";
-    }
-
-    forwardPass(input)
-    {
-        this.o = Array(input.length/2).fill(0)
-        this.index = Array(input.length/2).fill(0)
-    
-        this.errDer = [];
-        for(var i=0;i<input.length/2;i++)
-        {
-            var a = input[i*2][0];
-            var b = input[i*2 +1][0];
-            this.o[i] = [Math.max(a,b)];
-                        
-            var row = Array(input.length).fill(0);
-            if (a>b)
-            {
-                row[2*i] = 1;
-            }
-            else
-            {
-                row[2*i+1] = 1;
-            }
-            this.errDer.push(row);
-        }
-        
-        this.input = input;
-        return this.o;
-    }
-
-    getDerivative()
-    {
-        /*
-        var out = [];
-        for(var i=0;i<this.input.length/2;i++)
-        {
-            var row = Array(this.input.length).fill(0);
-            
-            var a = this.input[i*2][0];
-            var b = this.input[i*2 +1][0];
-            if (a>b)
-            {
-                row[2*i] = 1;
-            }
-            else
-            {
-                row[2*i+1] = 1;
-            }
-            
-            out.push(row);
-        }    
-        */
-        out = this.errDer;
-        
-        return MulMat(TransposeMat(out), this.layerDerivative);        
-    }
-
-    backpropInput(output)
-    {
-        this.layerDerivative  =  output;
-
-        this.deltas = [];
-    }
-
-    train(LearningRate) {};
-    
-    numericalDerivarive(network, input)
-    {
-        return [];
-    }
-}
-
-//----------------------------------------------------------------
-
-class MidPool1D
-{
-    constructor()
-    {
-        this.name ="MidPool 1D";
-    }
-
-    forwardPass(input)
-    {
-        this.input = input;
-        var o = Array(input.length/2).fill(0)
-    
-        for(var i=0;i<input.length/2;i++)
-        {
-            var a = input[i*2][0];
-            var b = input[i*2 +1][0];
-            o[i] = [(a+b)*0.5];     // average
-        }
-        
-        return o;
-    }
-
-    getDerivative()
-    {
-        var out = [];
-
-        var out = [];
-        for(var j=0;j<this.layerDerivative.length;j++)
-        {
-            var row = [];
-            for(var i=0;i<this.layerDerivative[0].length;i++)
-            {
-                var v = this.layerDerivative[j][i];
-                out.push( [v*.5] );
-                out.push( [v*.5] );
-            }
-        }        
-
-        return out;
-    }
-
-    backpropInput(output)
-    {
-        this.layerDerivative  =  output;
-
-        this.deltas = [];
-    }
-    
-    train(LearningRate) {};
-
-    numericalDerivarive(network, input)
-    {
-        return [];
-    }
-}
-
-//----------------------------------------------------------------
-
-class MidPool2D
-{
-    constructor()
-    {
-        this.name ="MidPool 2D";
-    }
-
-    forwardPass(input)
-    {
-        this.input = input;
-        
-        var o = []    
-        for(var y=0;y<input.length/2;y++)
-        {
-            var row = [];
-            for(var x=0;x<input[0].length/2;x++)
-            {
-                var a = input[y*2][x*2];
-                var b = input[y*2][x*2+1];
-                var c = input[y*2+1][x*2];
-                var d = input[y*2+1][x*2+1];
-                row[x] = (a+b+c+d)*0.25;     // average
-            }
-            o.push(row)
-        }        
-        return o;
-    }
-
-    getDerivative()
-    {
-        var out = [];
-
-        for(var y=0;y<this.layerDerivative.length;y++)
-        {
-            var row1 = [];
-            var row2 = [];
-
-            for(var x=0;x<this.layerDerivative[0].length;x++)
-            {
-                var v = this.layerDerivative[y][x];
-                
-                row1.push(v*.25); row1.push(v*.25);
-                row2.push(v*.25); row2.push(v*.25);
-            }
-            out.push(row1);
-            out.push(row2);
-        }    
-                
-        return out;        
-    }
-
-    train(LearningRate) {};
-
-    backpropInput(output)
-    {
-        this.layerDerivative  =  output;
-
-        this.deltas = [];
-    }
-
-    numericalDerivarive(network, input)
-    {
-        return [];
     }
 }
 
@@ -1727,10 +1534,10 @@ function Train_Conv2D_TF_flatten(exec) //OK
     var network = []
 
     network.push(new InputLayer());
-    network.push(new Conv2D(weights1, bias1));
-    network.push(new Conv2D(weights2, bias1));
+    network.push(new Conv2D(weights1, bias1, new ActIdentity()));
+    network.push(new Conv2D(weights2, bias1, new ActIdentity()));
     network.push(new Flatten());
-    network.push(new FullyConnected(9, 9));
+    network.push(new FullyConnected(9, 9, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
     
@@ -1791,9 +1598,9 @@ function Train_Conv3D_TF_flatten(exec) //OK
     var network = []
 
     network.push(new InputLayer());
-    network.push(new ConvFM(weights1, bias1));
+    network.push(new ConvFM(weights1, bias1, new ActIdentity()));
     network.push(new Flatten());
-    network.push(new FullyConnected(18, 1));
+    network.push(new FullyConnected(18, 1, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
     network[3].weights = 
@@ -1853,7 +1660,7 @@ function Train_Conv2D_LY_1_FM_1_TF(exec) //OK
     
     var network = []
     network.push(new InputLayer());
-    network.push(new Conv2D(weights, bias));
+    network.push(new Conv2D(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
     exec("Train_Conv2D_LY_1_FM_1_TF", network, input, output, 3.6741004)
@@ -1899,8 +1706,8 @@ function Train_Conv2D_LY_2_FM_1_TF(exec) // OK
 
     var network = []
     network.push(new InputLayer());
-    network.push(new Conv2D(weights1, bias1));
-    network.push(new Conv2D(weights2, bias2));
+    network.push(new Conv2D(weights1, bias1, new ActIdentity()));
+    network.push(new Conv2D(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
     exec("Train_Conv2D_LY_2_FM_1_TF", network, input, output,  15.311142)
@@ -1952,7 +1759,7 @@ function Train_Conv2D_LY_1_FM_21_TF(exec) //OK
     
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights, bias));
+    network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(1));
 
     exec("Train_Conv2D_LY_1_FM_21_TF", network, input, output,  0.3434204)
@@ -2006,7 +1813,7 @@ function Train_Conv2D_LY_1_3x4_FM_21_TF(exec) //OK
             
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights, bias));
+    network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(1));
 
     exec("Train_Conv2D_LY_1_3x4_FM_21_TF", network, input, output, 0.3476254)
@@ -2061,7 +1868,7 @@ function Train_Conv2D_LY_1_FM_12_TF(exec) //WIP
     
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights, bias));
+    network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
 
     exec("Train_Conv2D_LY_1_FM_12_TF ", network, input, output, 12.326438)
@@ -2132,7 +1939,7 @@ function Train_Conv2D_LY_1_FM_22_TF(exec)
             
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights, bias));
+    network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
 
     exec("Train_Conv2D_LY_1_FM_22_TF  ", network, input, output, 0.2694685)
@@ -2234,8 +2041,8 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
             
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights1, bias1));
-    network.push(new ConvFM(weights2, bias2));
+    network.push(new ConvFM(weights1, bias1, new ActIdentity()));
+    network.push(new ConvFM(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias2.length));
     
     exec("Train_Conv2D_LY_2_FM_22_TF  ", network, input, output, 0.1269055)
@@ -2369,8 +2176,8 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
             
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights1, bias1));
-    network.push(new ConvFM(weights2, bias2));
+    network.push(new ConvFM(weights1, bias1, new ActIdentity()));
+    network.push(new ConvFM(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias2.length));
     
     exec("Train_Conv2D_LY_2_FM_24_TF  ", network, input, output, 0.1269055)
@@ -2445,7 +2252,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
             
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights, bias));
+    network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
     
     exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.2718303)
@@ -2504,7 +2311,8 @@ var output =
 
 var bias1 = [0.71189, 1.58872]
 
-var weights2  = [
+var weights2  = 
+[
     [
         [
             [-0.21253,  0.42346,  1.05266,  -1.11682,  0.77978],
@@ -2794,12 +2602,12 @@ var bias4 = [[0.26023, -0.54600, -1.69065, 0.64599, -1.48815, -0.30396, 1.30466,
     
     var network = []
     network.push(new InputLayer());
-    network.push(new ConvFM(weights1, bias1));
+    network.push(new ConvFM(weights1, bias1, new ActReLu()));
     network.push(new MaxPool2D());
-    network.push(new ConvFM(weights2, bias2));
+    network.push(new ConvFM(weights2, bias2, new ActReLu()));
     network.push(new Flatten());
-    network.push(new FullyConnected(weights3, bias3));
-    network.push(new FullyConnected(weights4, bias4));
+    network.push(new FullyConnected(weights3, bias3, new ActReLu()));
+    network.push(new FullyConnected(weights4, bias4, new ActReLu()));
     network.push(new QuadraticCostLayer());    
     
 
@@ -2849,8 +2657,8 @@ function init()
     //
     // WIP
     //
-    //MNIST_conv_TF(DebugResult);
-    Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
+    MNIST_conv_TF(DebugResult);
+    //Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
 }
 </script>
 
