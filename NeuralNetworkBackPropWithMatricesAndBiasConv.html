@@ -19,6 +19,19 @@ h1 { display:block; width:800px; margin:20px auto; paddVing-bottom:20px; font:no
 <script>
 //---------------------------------------------------------------------
 
+function assert(condition, message) 
+{
+    if (!condition) 
+    {
+        message = message || "Assertion failed";
+        if (typeof Error !== "undefined") 
+        {
+            throw new Error(message);
+        }
+        throw message; // Fallback
+    }
+}
+
 function RandomMat(inp,neurons)
 {
     var L = []
@@ -119,6 +132,8 @@ function MatId(dimX, value)
 
 function MulMat(m1, m2)
 {
+    assert(m1[0].length == m2.length);
+
     var O = [];
     for(var j=0;j<m1.length;j++)
     {
@@ -173,6 +188,9 @@ function TransposeMat(m)
 
 function AddMat(m1, m2)
 {
+    assert(m1.length == m2.length);
+    assert(m1[0].length == m2[0].length);
+
     var O = [];
     for(var j=0;j<m1.length;j++)
     {
@@ -187,6 +205,9 @@ function AddMat(m1, m2)
 
 function SimpleMulMat(m1, m2)
 {
+    assert(m1.length == m2.length);
+    assert(m1[0].length == m2[0].length);
+
     var O = [];
     for(var j=0;j<m1.length;j++)
     {
@@ -215,6 +236,9 @@ function MulKMat(k, m)
 
 function SubMat(m1, m2)
 {
+    assert(m1.length == m2.length);
+    assert(m1[0].length == m2[0].length);
+
     var O = [];
     for(var j=0;j<m1.length;j++)
     {
@@ -694,7 +718,7 @@ class Conv2D
         
         for(var y=0;y<this.layerDerivative.length;y++)
         {
-            for(var x=0;x<this.layerDerivative.length;x++)    
+            for(var x=0;x<this.layerDerivative[0].length;x++)    
             {
                 ld[x+y*this.layerDerivative.length] = [this.layerDerivative[y][x]];
             }
@@ -764,6 +788,24 @@ class Conv2D
 
 //----------------------------------------------------------------
 
+function ReverseKernel3D(kernel)
+{
+    var m = [];
+    for(var j=0;j<kernel.length;j++)
+        m[j] = ReverseKernel2D(kernel[kernel.length-1 - j]);
+    return m;
+}
+
+function Conv3DInputForward(nonPaddedInput, weights, bias, padding)
+{
+    var out;
+
+    out = Conv2DInputForward(nonPaddedInput[0], weights[0], bias, padding)
+    for(var k=1;k<weights.length;k++)
+        out = AddMat(out, Conv2DInputForward(nonPaddedInput[k], weights[k], 0, padding))
+    return out;
+}
+
 class Conv3D
 {
     constructor(weights, bias, act)
@@ -780,19 +822,14 @@ class Conv3D
     {
         this.input = input;
         this.depth = this.weights.length;
-        
-        this.net = Conv2DInputForward(input[0], this.weights[0], this.bias, this.padding)
-        for(var k=1;k<this.depth;k++)
-            this.net = AddMat(this.net, Conv2DInputForward(input[k], this.weights[k], 0, this.padding))
-        
+        this.net = Conv3DInputForward(input, this.weights, this.bias, this.padding)
         return funcMat(this.act.Act, this.net)
     }
     
     getDerivative()
     {   
-        var v = Conv2DInputForward(this.layerDerivative, ReverseKernel2D(this.weights[0]), this.bias, this.padding)
-        for(var k=1;k<this.depth;k++)
-            v = AddMat(v, Conv2DInputForward(this.layerDerivative, ReverseKernel2D(this.weights[k]), 0, this.padding));
+        var revKernel = ReverseKernel3D(this.weights)
+        v = Conv3DInputForward(this.layerDerivative, revKernel, this.bias, this.padding)
         return  v;
     }
     
@@ -863,6 +900,163 @@ class Conv3D
             this.weights[Math.floor(i/9)][Math.floor((i%9)/3)][(i%9)%3]+=val
         else
             this.bias+=val
+    }
+    numericalDerivarive(network, input)
+    {
+        var outA = []
+        var outB = []
+        for(var i=0;i<this.weights.length*this.weights[0].length*this.weights[1].length+1;i++)
+        {
+            this.AddWeight(i,.000001)
+            outA.push(ForwardPropagation(network, (input)))
+            this.AddWeight(i,-.000001)
+            outB.push(ForwardPropagation(network, (input)))
+        }
+        var out = MulKMat(1.0/.000001,SubMat(outA, outB));
+        
+        return out;
+    }
+}
+
+//----------------------------------------------------------------
+class Conv3DFM
+{
+    constructor(weights, bias, act)
+    {
+        this.act = act;
+        this.weights = weights;
+        this.kernelDim = weights[0][0][0].length
+        this.bias = bias;
+        this.padding = (this.weights[0][0].length-1)/2;
+        this.name ="Conv3DFM";
+    }
+    
+    forwardPass(input)
+    {
+        this.input = input;
+        this.depth = this.weights[0].length;
+        
+        var out = []
+        this.net = []
+        
+        for(var fm=0;fm<this.weights.length;fm++)
+        {        
+            this.net[fm] = Conv3DInputForward(input, this.weights[fm], this.bias[fm], this.padding)
+            out[fm] = funcMat(this.act.Act, this.net[fm]);
+        }        
+        return out;
+    }
+    
+    getDerivative()
+    {   
+        var out = []
+        var revKernel = ReverseKernel3D(this.weights)            
+        for(var fm=0;fm<this.weights.length;fm++)
+        {                    
+            out[fm] = Conv3DInputForward(this.layerDerivative, revKernel[fm], this.bias[fm], this.padding);
+        }
+        return out;
+    }
+    
+    backpropInput(output)
+    {
+        var out = []
+
+        this.layerDerivative = [];
+        this.weightDeltas = []
+        this.biasDeltas = []
+                
+        for(var fm=0;fm<this.weights.length;fm++)
+        {        
+            this.layerDerivative[fm] = SimpleMulMat(funcMat(this.act.DerAct, this.net[fm]), output[fm]);
+        }
+        
+        var ld = [];
+        for(var z=0;z<this.layerDerivative.length;z++)
+        {
+            for(var y=0;y<this.layerDerivative[0].length;y++)
+            {
+                for(var x=0;x<this.layerDerivative[0][0].length;x++)    
+                {
+                    ld[x+y*this.layerDerivative[0][0].length + z*this.layerDerivative[0][0].length * this.layerDerivative[0].length] = [this.layerDerivative[z][y][x]];
+                }
+            }
+        }
+               
+        var deltas = []
+        for(var i=0;i<this.weights.length*this.weights[0].length*this.weights[0][0].length*this.weights[0][0][0].length+1;i++)
+        {
+            deltas[i]=[]
+        }
+        
+        var input = [];
+        for(var k=0;k<this.weights.length;k++)
+        {
+            input[k] = Add2DPaddingMat(this.input[k], this.padding)
+        }        
+        
+        var yy = 1 + input[0].length    - this.weights[0][0].length;
+        var xx = 1 + input[0][0].length - this.weights[0][0][0].length;
+        for(var z=0;z<input.length;z++)
+        {
+            for(var y=0;y<yy;y++)
+            {
+                for(var x=0;x<xx;x++)
+                {
+                    for(var fm=0;fm<this.weights.length;fm++)
+                    {                                       
+                        for(var k=0;k<this.weights[0].length;k++)
+                        {                                       
+                            for(var j=0;j<this.weights[0][0].length;j++)
+                            {
+                                for(var i=0;i<this.weights[0][0][0].length;i++)    
+                                {
+                                    deltas[i + j * this.weights[0][0][0].length + k* this.weights[0][0][0].length*this.weights[0][0].length + fm*this.weights[0][0][0].length*this.weights[0][0].length*this.weights[0].length][x + y * xx + z*xx*yy] = input[k][y+j][x+i];
+                                }
+                            }
+                        }
+                    }
+                    deltas[this.weights.length*this.weights[0].length*this.weights[0][0].length*this.weights[0][0][0].length].push(1);
+                }
+            }
+        }        
+        
+        var deltas2 = MulMat(deltas,ld);
+        
+        for(var fm=0;fm<this.weights.length;fm++)
+        {                                       
+            this.weightDeltas[fm] = []
+            for(var k=0;k<this.weights[0].length;k++)
+            {                
+                var a = (k + fm* this.weights[0].length);
+                var b = a+1;//((fm+1) + k * this.weights.length);
+                this.weightDeltas[fm][k] = ConvertMat(deltas2.slice(a*this.kernelDim*this.kernelDim, b*this.kernelDim*this.kernelDim), this.kernelDim,this.kernelDim);
+            }
+        }        
+        
+        for(var fm=0;fm<this.weights.length;fm++)
+            this.biasDeltas[fm]   = deltas2[deltas2.length-1][0]
+    }
+        
+    train(LearningRate)
+    {
+        for(var fm=0;fm<this.weights.length;fm++)
+        {        
+            for(var k=0;k<this.depth;k++)
+                this.weights[fm][k] = SubMat( this.weights[fm][k], MulKMat(LearningRate,this.weightDeltas[fm][k]));
+            this.bias[fm]    = this.bias[fm] - LearningRate * this.biasDeltas[fm];
+        }
+    }        
+        
+    AddWeight(i,val)
+    {
+        for(var fm=0;fm<this.weights.length;fm++)
+        {        
+            if (i<this.weights[fm].length*this.weights[fm][0].length*this.weights[fm][1].length)
+                this.weights[fm][Math.floor(i/9)][Math.floor((i%9)/3)][(i%9)%3]+=val
+            else
+                this.bias[fm]+=val
+        }
     }
     numericalDerivarive(network, input)
     {
@@ -1069,25 +1263,23 @@ class MaxPool2D
     }
 
     forwardPass(inputfms)
-    {        
-        this.inputfms = inputfms;
-        
-        this.errDer = [];
+    {               
+        this.routing = [];
         var fmout = []
         
         for(var fm=0;fm<inputfms.length;fm++)
         {        
             var input = inputfms[fm];
         
-            this.errDer[fm] = [];
+            this.routing[fm] = [];
         
             var o = []    
             
             for(var y=0;y<input.length/2;y++)
             {
                 var row = [];
-                var rowErrDer1 = [];
-                var rowErrDer2 = [];
+                var rowRouting1 = [];
+                var rowRouting2 = [];
                 for(var x=0;x<input[0].length/2;x++)
                 {
                     var a = input[y*2  ][x*2];   var b = input[y*2  ][x*2+1];
@@ -1096,32 +1288,44 @@ class MaxPool2D
                     var res = Math.max(a,Math.max(b,Math.max(c,d)));
                     
                     row.push(res);
-                    
-                    var m = 0;
-                    if (a==res) m++;
-                    if (b==res) m++;
-                    if (c==res) m++;
-                    if (d==res) m++;
-                    
-                    m = 1.0/m;
-                                    
-                    rowErrDer1.push( (a==res)?m:0 ); rowErrDer1.push( (b==res)?m:0 );
-                    rowErrDer2.push( (c==res)?m:0 ); rowErrDer2.push( (d==res)?m:0 );
+                                                       
+                    rowRouting1.push( (a==res)?1:0 ); rowRouting1.push( (b==res)?1:0 );
+                    rowRouting2.push( (c==res)?1:0 ); rowRouting2.push( (d==res)?1:0 );
                 }
                 
                 o.push(row);
                 
-                this.errDer[fm].push(rowErrDer1);
-                this.errDer[fm].push(rowErrDer2);
+                this.routing[fm].push(rowRouting1);
+                this.routing[fm].push(rowRouting2);
             }        
             fmout.push(o);
         }        
         return fmout;
     }
 
-    getDerivative()
-    {               
-        return this.errDer;        
+    getDerivative()    
+    {              
+        var fmout = [];
+        for(var fm=0;fm<this.routing.length;fm++)
+        {        
+            var matout = this.routing[fm];
+            
+            var cols = []
+            for(var y=0;y<matout.length;y++)
+            {
+                var raw = []
+                for(var x=0;x<matout[0].length;x++)
+                {
+                    var v = this.layerDerivative[fm][Math.floor(y/2)][Math.floor(x/2)];
+                
+                    raw.push((this.routing[fm][y][x]==1)?v:0);
+                }
+                cols.push(raw)
+            }                        
+            fmout.push(cols);
+        }
+        
+        return fmout;                
     }
 
     train(LearningRate) {};
@@ -1455,7 +1659,7 @@ function TestNetwork(network, input, output)
     Print(str);
 }
 
-function TestResult(name, network, input, output, expected)
+function TestResult(name, network, input, output, learningRate, expected)
 {
     for(var i=0;i<3;i++)
     {
@@ -1463,7 +1667,7 @@ function TestResult(name, network, input, output, expected)
         ForwardPropagation(network, input);
         //DumpWeights(network, input);
         BackwardPropagation(network);
-        ApplyDeltas(network, 0.01);
+        ApplyDeltas(network, learningRate);
     }
 
     var res = ForwardPropagation(network, input)
@@ -1471,22 +1675,20 @@ function TestResult(name, network, input, output, expected)
     Print(out)    
 }
 
-function DebugResult(name, network, input, output, expected)
+function DebugResult(name, network, input, output, learningRate, expected)
 {
-
     for(var i=0;i<3;i++)
     {
         network[network.length-1].setValue(output);
         ForwardPropagation(network, input);
         DumpWeights(network, input);
         BackwardPropagation(network);
-        ApplyDeltas(network, 0.01);
+        ApplyDeltas(network, learningRate);
     }
 
     var res = ForwardPropagation(network, input)
     var out = name + " " + (res[0] - expected) + "</br>";        
-    Print(out)    
-    
+    Print(out)       
     
     TestNetwork(network, input, output)
 }
@@ -1535,7 +1737,7 @@ function Train_Conv2D_TF_flatten(exec) //OK
 
     network.push(new InputLayer());
     network.push(new Conv2D(weights1, bias1, new ActIdentity()));
-    network.push(new Conv2D(weights2, bias1, new ActIdentity()));
+    network.push(new Conv2D(weights2, bias2, new ActIdentity()));
     network.push(new Flatten());
     network.push(new FullyConnected(9, 9, new ActIdentity()));
     network.push(new QuadraticCostLayer());
@@ -1556,7 +1758,7 @@ function Train_Conv2D_TF_flatten(exec) //OK
     network[4].bias = [[0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000, 0.00000]]
 
 
-    exec("Train_Conv2D_TF_flatten", network, input, output, 0.11206103)
+    exec("Train_Conv2D_TF_flatten", network, input, output, 0.01, 0.11206103)
 }
 
 
@@ -1573,7 +1775,7 @@ function Train_Conv3D_TF_flatten(exec) //OK
 
     var output = 
     [
-        [0, 0, 0, 0, 0, 0, 0, 0, 0] 
+        [0] 
     ];
 
     var weights1 = 
@@ -1627,7 +1829,7 @@ function Train_Conv3D_TF_flatten(exec) //OK
     network[3].bias = [[0.00000]]
 
 
-    exec("Train_Conv3D_TF_flatten", network, input, output,  0.11162803)
+    exec("Train_Conv3D_TF_flatten", network, input, output, 0.01, 0.11162803)
 }
 
 
@@ -1663,7 +1865,7 @@ function Train_Conv2D_LY_1_FM_1_TF(exec) //OK
     network.push(new Conv2D(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
-    exec("Train_Conv2D_LY_1_FM_1_TF", network, input, output, 3.6741004)
+    exec("Train_Conv2D_LY_1_FM_1_TF", network, input, output, 0.01, 3.6741004)
 }
 
 function Train_Conv2D_LY_2_FM_1_TF(exec) // OK
@@ -1710,7 +1912,7 @@ function Train_Conv2D_LY_2_FM_1_TF(exec) // OK
     network.push(new Conv2D(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayer());
 
-    exec("Train_Conv2D_LY_2_FM_1_TF", network, input, output,  15.311142)
+    exec("Train_Conv2D_LY_2_FM_1_TF", network, input, output, 0.01, 15.311142)
 }
 
 function Train_Conv2D_LY_1_FM_21_TF(exec) //OK
@@ -1721,8 +1923,7 @@ function Train_Conv2D_LY_1_FM_21_TF(exec) //OK
             [ 0.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
             [ 1.0, 0.0, 0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
@@ -1762,7 +1963,7 @@ function Train_Conv2D_LY_1_FM_21_TF(exec) //OK
     network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(1));
 
-    exec("Train_Conv2D_LY_1_FM_21_TF", network, input, output,  0.3434204)
+    exec("Train_Conv2D_LY_1_FM_21_TF", network, input, output, 0.01, 0.3434204)
 }
 
 function Train_Conv2D_LY_1_3x4_FM_21_TF(exec) //OK
@@ -1774,8 +1975,7 @@ function Train_Conv2D_LY_1_3x4_FM_21_TF(exec) //OK
             [ 0.0, 0.0, 0.0 ],
             [ 0.0, 0.0, 0.0 ],
             [ 1.0, 0.0, 0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
@@ -1816,7 +2016,7 @@ function Train_Conv2D_LY_1_3x4_FM_21_TF(exec) //OK
     network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(1));
 
-    exec("Train_Conv2D_LY_1_3x4_FM_21_TF", network, input, output, 0.3476254)
+    exec("Train_Conv2D_LY_1_3x4_FM_21_TF", network, input, output, 0.01, 0.3476254)
 }
 
 
@@ -1871,7 +2071,7 @@ function Train_Conv2D_LY_1_FM_12_TF(exec) //WIP
     network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
 
-    exec("Train_Conv2D_LY_1_FM_12_TF ", network, input, output, 12.326438)
+    exec("Train_Conv2D_LY_1_FM_12_TF ", network, input, output, 0.01, 12.326438)
 }
 
 function Train_Conv2D_LY_1_FM_22_TF(exec) 
@@ -1882,8 +2082,7 @@ function Train_Conv2D_LY_1_FM_22_TF(exec)
             [ 0.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
             [ 1.0, 0.0, 0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
@@ -1897,8 +2096,7 @@ function Train_Conv2D_LY_1_FM_22_TF(exec)
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
             [ 0.0,0.0,0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
@@ -1942,7 +2140,7 @@ function Train_Conv2D_LY_1_FM_22_TF(exec)
     network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
 
-    exec("Train_Conv2D_LY_1_FM_22_TF  ", network, input, output, 0.2694685)
+    exec("Train_Conv2D_LY_1_FM_22_TF  ", network, input, output, 0.01, 0.2694685)
 }
 
 function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
@@ -1950,15 +2148,14 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
     var input = 
     [
         [
-            [ 0.0, 0.0, 0.0 ],  
+            [ 1.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
-            [ 1.0, 0.0, 0.0 ]
-        ]
-        ,
+            [ 0.0, 0.0, 0.0 ]
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
-            [ 1.0,0.0,0.0 ]
+            [ 0.0,0.0,0.0 ]
         ]
     ]
     
@@ -1968,8 +2165,7 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
             [ 0.0,0.0,0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
@@ -1978,6 +2174,7 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
     ]
 
     var weights1 = 
+/*    
     [
         [
             [
@@ -2005,10 +2202,37 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
             ]        
         ]
     ]
-    
+*/    
+[
+  [
+    [
+      [1.0, 2.0, 3.0],
+      [4.0, 5.0, 6.0],
+      [7.0, 8.0, 9.0]
+    ],
+    [
+      [110.0, 120.0, 130.0],
+      [140.0, 150.0, 160.0],
+      [170.0, 180.0, 190.0]
+    ]
+  ],
+  [
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ],
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ]
+  ]
+]
     var bias1 = [0,0]
 
     var weights2 = 
+/*    
     [
       [
         [
@@ -2035,7 +2259,33 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
         ]
       ]
     ]
-    
+*/
+[
+  [
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ],
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 1.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ]
+  ],
+  [
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ],
+    [
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0],
+      [0.0, 0.0, 0.0]
+    ]
+  ]
+]
     var bias2 = [0,0]
 
             
@@ -2045,7 +2295,7 @@ function Train_Conv2D_LY_2_FM_22_TF(exec) //TBD
     network.push(new ConvFM(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias2.length));
     
-    exec("Train_Conv2D_LY_2_FM_22_TF  ", network, input, output, 0.1269055)
+    exec("Train_Conv2D_LY_2_FM_22_TF  ", network, input, output, 1, 0.6039868)
 }
 
 
@@ -2057,12 +2307,11 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
             [ 0.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
             [ 1.0, 0.0, 0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
-            [ 1.0,0.0,0.0 ]
+            [ 0.0,0.0,0.0 ]
         ]
     ]
     
@@ -2072,20 +2321,17 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
             [ 0.0,0.0,0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
             [ 0.0,0.0,0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
             [ 0.0,0.0,0.0 ]
-        ]
-        ,
+        ],
         [
             [ 0.0,0.0,0.0 ],  
             [ 0.0,0.0,0.0 ],
@@ -2180,7 +2426,7 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
     network.push(new ConvFM(weights2, bias2, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias2.length));
     
-    exec("Train_Conv2D_LY_2_FM_24_TF  ", network, input, output, 0.1269055)
+    exec("Train_Conv2D_LY_2_FM_24_TF  ", network, input, output, 0.01, 0.1269055)
 }
 
 
@@ -2189,7 +2435,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
     var input = 
     [
         [
-            [ 0.0, 0.0, 0.0 ],  
+            [ 2.0, 0.0, 0.0 ],  
             [ 0.0, 0.0, 0.0 ],
             [ 0.0, 0.0, 0.0 ],
             [ 1.0, 0.0, 0.0 ]
@@ -2255,7 +2501,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
     network.push(new ConvFM(weights, bias, new ActIdentity()));
     network.push(new QuadraticCostLayerFM(bias.length));
     
-    exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.2718303)
+    exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.01, 1.0946335)
 }
 
 function MNIST_conv_TF(exec)
@@ -2291,95 +2537,95 @@ var output =
 [
     [
         [
-            [-0.40044,  1.39251,  1.53509,  -1.20184,  -1.55040],
-            [-0.62751,  0.20638,  -0.53980,  -0.45992,  0.14141],
-            [1.92555,  -0.26546,  -1.80504,  0.77679,  0.58408],
-            [0.42258,  0.43382,  -1.56110,  0.53515,  0.18111],
-            [0.48405,  -0.52786,  0.41783,  -0.35236,  -0.11114]
+            [-0.40043893,  1.39250910,  1.53509355,  -1.20183814,  -1.55039680],
+            [-0.62751490,  0.20638135,  -0.53980100,  -0.45992145,  0.14141290],
+            [1.92554867,  -0.26546195,  -1.80504036,  0.77679163,  0.58407563],
+            [0.42257926,  0.43381512,  -1.56110442,  0.53515404,  0.18111403],
+            [0.48405337,  -0.52785796,  0.41782960,  -0.35235736,  -0.11114009]
         ],
     ],
     [
         [
-            [1.06921,  -0.41600,  -0.32442,  1.90319,  0.09681],
-            [0.37812,  -0.42673,  0.30186,  0.61579,  0.10396],
-            [0.03390,  -0.14569,  -0.76626,  -1.78096,  -0.30402],
-            [0.21798,  -0.46208,  -0.17149,  0.01994,  0.21012],
-            [-0.15265,  -0.11330,  -1.63646,  1.13742,  1.31164]
+            [1.06921244,  -0.41600409,  -0.32442206,  1.90319407,  0.09681021],
+            [0.37812313,  -0.42673475,  0.30186483,  0.61579102,  0.10396025],
+            [0.03389525,  -0.14569002,  -0.76625937,  -1.78096414,  -0.30402365],
+            [0.21797952,  -0.46208054,  -0.17149320,  0.01993969,  0.21011673],
+            [-0.15265189,  -0.11329886,  -1.63646138,  1.13742304,  1.31163502]
         ],
     ],
 ]
 
-var bias1 = [0.71189, 1.58872]
+var bias1 = [0.71189165, 1.58872235]
 
 var weights2  = 
 [
     [
         [
-            [-0.21253,  0.42346,  1.05266,  -1.11682,  0.77978],
-            [1.24528,  -1.05662,  -0.13420,  -0.35908,  0.27172],
-            [0.80576,  0.93288,  0.97077,  0.02445,  -0.20353],
-            [-1.83189,  -0.85819,  0.89789,  1.58243,  -0.46141],
-            [0.29915,  0.56829,  0.76399,  0.82440,  0.44823]
+            [-0.21253194,  0.42345893,  1.05266440,  -1.11681867,  0.77977878],
+            [1.24527955,  -1.05662417,  -0.13420390,  -0.35908392,  0.27172256],
+            [0.80575562,  0.93287522,  0.97076952,  0.02444948,  -0.20352986],
+            [-1.83188546,  -0.85818684,  0.89788824,  1.58242846,  -0.46141213],
+            [0.29914913,  0.56829095,  0.76398998,  0.82439607,  0.44822544]
         ],
         [
-            [0.59263,  0.12394,  -1.74323,  0.82959,  0.03310],
-            [1.22515,  -1.68569,  1.28581,  0.68728,  0.30339],
-            [-2.15054,  -0.32811,  -1.81053,  -0.72351,  1.37678],
-            [0.12505,  1.03898,  -1.00298,  2.91721,  -0.32537],
-            [0.76973,  1.22873,  0.54991,  0.32304,  0.02203]
-        ],
-    ],
-    [
-        [
-            [0.47261,  -1.39564,  -0.81977,  0.93270,  0.94153],
-            [0.43713,  0.09899,  0.07707,  0.50910,  0.28982],
-            [-0.72349,  0.27979,  -1.31227,  -0.89159,  1.63672],
-            [-0.62262,  0.55606,  0.18373,  2.00508,  -0.61324],
-            [0.69664,  -0.62457,  1.28411,  0.51960,  3.58637]
-        ],
-        [
-            [0.51206,  0.49640,  -1.91397,  -0.99781,  0.19240],
-            [0.02753,  1.30252,  -1.09193,  0.58976,  -1.51840],
-            [-0.30882,  -1.15378,  -0.72172,  0.29369,  0.25240],
-            [0.90591,  2.49991,  -0.43388,  -0.11716,  -0.90106],
-            [1.00581,  0.04707,  0.17609,  -0.12853,  0.46790]
+            [0.59263372,  0.12394243,  -1.74322569,  0.82958740,  0.03309733],
+            [1.22514629,  -1.68569195,  1.28580928,  0.68728042,  0.30339420],
+            [-2.15053964,  -0.32810855,  -1.81052732,  -0.72350895,  1.37677526],
+            [0.12505309,  1.03898001,  -1.00298440,  2.91721058,  -0.32537076],
+            [0.76972681,  1.22873163,  0.54990500,  0.32304394,  0.02203057]
         ],
     ],
     [
         [
-            [-0.43042,  0.45048,  0.84290,  -1.48758,  1.47855],
-            [-0.14358,  -0.79734,  -0.54108,  0.34818,  0.72317],
-            [0.19683,  -0.49714,  0.36272,  0.93128,  0.13842],
-            [-0.85840,  -0.07827,  -1.29910,  -1.05924,  -0.13553],
-            [0.77993,  -0.60416,  0.98801,  -1.36127,  -0.81186]
+            [0.47261432,  -1.39564407,  -0.81977445,  0.93269563,  0.94153321],
+            [0.43712595,  0.09898939,  0.07706928,  0.50910246,  0.28982282],
+            [-0.72348970,  0.27979130,  -1.31227469,  -0.89159101,  1.63672078],
+            [-0.62262422,  0.55606484,  0.18373138,  2.00507760,  -0.61323977],
+            [0.69663697,  -0.62457025,  1.28411448,  0.51960158,  3.58636880]
         ],
         [
-            [-1.44619,  1.96150,  1.01238,  -0.13701,  0.01661],
-            [1.82762,  -0.57203,  1.10328,  -0.20185,  -0.56359],
-            [0.80637,  -0.14306,  -0.30568,  -0.42391,  0.31624],
-            [-2.07605,  -1.60495,  -0.67492,  -0.16840,  0.76779],
-            [-0.27340,  0.34756,  -0.30202,  0.03786,  1.08143]
+            [0.51205689,  0.49639893,  -1.91397464,  -0.99780667,  0.19240141],
+            [0.02753332,  1.30251670,  -1.09192669,  0.58976424,  -1.51839840],
+            [-0.30881929,  -1.15378165,  -0.72172076,  0.29368895,  0.25240254],
+            [0.90590531,  2.49990559,  -0.43388265,  -0.11716311,  -0.90106499],
+            [1.00581455,  0.04706980,  0.17608863,  -0.12852575,  0.46789858]
         ],
     ],
     [
         [
-            [0.58410,  -2.02763,  -1.20968,  1.02016,  2.65138],
-            [-0.93449,  1.68586,  0.34427,  1.59252,  -0.46187],
-            [-0.97065,  0.14126,  0.81998,  -1.51217,  1.26373],
-            [-0.91608,  0.25145,  0.39670,  0.28039,  -2.16603],
-            [-0.28558,  0.82963,  -0.64108,  -0.43019,  0.07660]
+            [-0.43042096,  0.45048392,  0.84289759,  -1.48758256,  1.47854984],
+            [-0.14357843,  -0.79733956,  -0.54108185,  0.34817657,  0.72317213],
+            [0.19683227,  -0.49713567,  0.36272043,  0.93128449,  0.13841963],
+            [-0.85839742,  -0.07827215,  -1.29910326,  -1.05924499,  -0.13553230],
+            [0.77992821,  -0.60416323,  0.98800778,  -1.36127198,  -0.81186217]
         ],
         [
-            [0.88816,  -0.91018,  0.85836,  0.55229,  0.51040],
-            [1.00976,  -0.05195,  1.07958,  0.02160,  -0.05430],
-            [0.50141,  0.42364,  -0.30996,  1.57292,  -1.80462],
-            [-0.76050,  0.40869,  -0.09754,  -0.69483,  -1.68390],
-            [-0.62668,  0.41328,  -0.36225,  0.49896,  0.37636]
+            [-1.44618726,  1.96149969,  1.01237750,  -0.13700910,  0.01660874],
+            [1.82761526,  -0.57202590,  1.10327756,  -0.20185257,  -0.56359178],
+            [0.80637443,  -0.14305574,  -0.30568007,  -0.42391363,  0.31624264],
+            [-2.07605171,  -1.60495460,  -0.67491567,  -0.16840284,  0.76779091],
+            [-0.27340224,  0.34755632,  -0.30201918,  0.03786397,  1.08143044]
+        ],
+    ],
+    [
+        [
+            [0.58410418,  -2.02763271,  -1.20967817,  1.02016413,  2.65138078],
+            [-0.93448621,  1.68586147,  0.34426817,  1.59251893,  -0.46186543],
+            [-0.97064763,  0.14125997,  0.81997943,  -1.51216507,  1.26373053],
+            [-0.91607696,  0.25145224,  0.39669856,  0.28039008,  -2.16602921],
+            [-0.28558019,  0.82963258,  -0.64108467,  -0.43018910,  0.07659558]
+        ],
+        [
+            [0.88815665,  -0.91018170,  0.85835505,  0.55229086,  0.51040363],
+            [1.00975919,  -0.05194801,  1.07957757,  0.02159504,  -0.05430375],
+            [0.50140631,  0.42364126,  -0.30996266,  1.57291782,  -1.80461824],
+            [-0.76049781,  0.40868825,  -0.09753571,  -0.69483018,  -1.68389893],
+            [-0.62668055,  0.41328254,  -0.36225352,  0.49895716,  0.37636471]
         ],
     ],
 ]
 
-var bias2 = [0.47189, -0.12622, 1.39904, -1.33928]
+var bias2 = [0.47189161, -0.12621744, 1.39903843, -1.33927989]
 
 var weights3 = 
 [
@@ -2580,10 +2826,7 @@ var weights3 =
     [ -0.84357816, -1.09199953, 1.27423978, 0.56597060, 1.48868835, -1.08407104, -0.31937242, 1.66639030],
     [ -1.50311422, 0.00003944, -1.58413625, 0.10389634, 0.28960338, 1.15975440, 0.34557402, 0.96180421]
 ]
-
-
-var bias3 = 
-[[1.36428, -0.36533, -1.23183, 0.44870, 0.08801, -1.09067, -0.75490, 0.26077]]
+var bias3 = [[1.36428356, -0.36533275, -1.23183453, 0.44869965, 0.08800826, -1.09067047, -0.75489932, 0.26076525]]
 
   
 var weights4 = 
@@ -2597,7 +2840,7 @@ var weights4 =
     [ -0.93294680, -0.34403381, -2.37116241, -1.43796575, -0.08516861, 1.09313345, 1.11867619, -0.09029349, -1.08179951, -0.53231722],
     [ -0.06327412, 0.07424675, -1.81953967, 0.30803666, 2.24175096, 0.10310568, -0.70534545, -0.76693177, 1.55273652, -1.04003561]
 ]
-var bias4 = [[0.26023, -0.54600, -1.69065, 0.64599, -1.48815, -0.30396, 1.30466, 0.72157, -0.11983, -0.32053]  ]
+var bias4 = [[0.26022986, -0.54599893, -1.69064844, 0.64598840, -1.48815429, -0.30396396, 1.30465949, 0.72156817, -0.11983439, -0.32052681]  ]
   
     
     var network = []
@@ -2611,7 +2854,7 @@ var bias4 = [[0.26023, -0.54600, -1.69065, 0.64599, -1.48815, -0.30396, 1.30466,
     network.push(new QuadraticCostLayer());    
     
 
-    exec("MNIST_conv_TF", network, input, output, 0.2718303)
+    exec("MNIST_conv_TF", network, input, output, 0.000001, 0.2718303)
 }
 
 function regressionTests()
@@ -2657,7 +2900,8 @@ function init()
     //
     // WIP
     //
-    MNIST_conv_TF(DebugResult);
+    //MNIST_conv_TF(DebugResult);
+    Train_Conv2D_LY_2_FM_22_TF(DebugResult);
     //Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
 }
 </script>
