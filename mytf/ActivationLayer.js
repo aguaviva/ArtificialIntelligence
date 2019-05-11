@@ -10,43 +10,38 @@ class ActivationLayer
     forwardPass(input)
     {
         this.input = input;
+          
+        var outFM = []
         
-        this.dim = GetDimensions(input)
-  
-        if (this.dim.length==3)
-        {        
+        for(var fm=0;fm<this.input.length;fm++)
+        {
             var out = []
-            
-            for(var i=0;i<this.input.length;i++)
+            for(var i=0;i<this.input[0].length;i++)
             {
-                out[i] = funcMat(this.act.Act, input[i]);
+                out[i] = funcMat(this.act.Act, input[fm][i]);
             }
             
-            return out;
+            outFM[fm] = out;
         }
-        else
-        {
-            return funcMat(this.act.Act, input);
-        }
+        return outFM;
     }
 
     backPropagation(layerDerivative)
     {        
-        if (this.dim.length==3)
-        {        
+        var outFM = []
+
+        for(var fm=0;fm<this.input.length;fm++)
+        {
             var out = []
 
-            for(var i=0;i<this.input.length;i++)
+            for(var i=0;i<this.input[0].length;i++)
             {
-                out[i] = SimpleMulMat(funcMat(this.act.DerAct, this.input[i]), layerDerivative[i]);
+                out[i] = SimpleMulMat(funcMat(this.act.DerAct, this.input[fm][i]), layerDerivative[fm][i]);
             }
 
-            return out;
+            outFM[fm] = out;
         }
-        else
-        {
-            return SimpleMulMat(funcMat(this.act.DerAct, this.input), layerDerivative);
-        }
+        return outFM;
     }
     
     computeDeltas(layerDerivative)
@@ -56,15 +51,7 @@ class ActivationLayer
     train(LearningRate)
     {
     }        
-        
-    AddWeight(i,val)
-    {
-    }
 
-    numericalDerivarive(network, input)
-    {
-        return;
-    }
 }
 
 

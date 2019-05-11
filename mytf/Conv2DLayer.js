@@ -28,16 +28,16 @@ function Add2DPaddingMat(input, padding)
     return b;
 }
 
-function Conv2DInputForward(nonPaddedInput, weights, bias, padding)
+function Conv2DMatrixForward(nonPaddedInput, weights, bias, padding)
 {
-    var input = Add2DPaddingMat(nonPaddedInput, padding)
+    input = Add2DPaddingMat(nonPaddedInput, padding)
 
-    out = []
+    var out = []
 
-    for(var y=0;y<input.length - weights.length + 1; y++)
+    for(var y=0;y<input[0].length - weights[0].length + 1; y++)
     {
         out[y]=[]
-        for(var x=0;x<input[0].length - weights.length + 1; x++)
+        for(var x=0;x<input.length - weights.length + 1; x++)
         {        
             var o = bias;
             for(var j=0;j<weights.length;j++)
@@ -48,10 +48,35 @@ function Conv2DInputForward(nonPaddedInput, weights, bias, padding)
                 }
             }
             
-            out[y].push(o);
+            out[y][x] = o;
         }
     }
+        
+    return out;
+}
+
+function Conv2DTensorForward(input, weights, bias, padding)
+{
+    var out = []
+
+    assert(input.length == weights[0].length);
     
+    for(var j=0;j<weights.length;j++)
+    {
+        out[j] = []
+        for(var i=0;i<input[0].length;i++)
+        {
+            
+            var o = Conv2DMatrixForward(input[0][i], weights[j][0], bias[0], padding)   
+            for(var k=1;k<input.length;k++)
+            {
+                o = AddMat(o , Conv2DMatrixForward(input[k][i], weights[j][k], bias[j], padding))   
+            }
+            
+            out[j][i] = o
+        }
+    }
+
     return out;
 }
 
@@ -59,7 +84,7 @@ class Conv2DLayer
 {
     constructor(weights, bias)
     {
-        this.weights = weights[0][0];
+        this.weights = weights;
         this.bias = bias;
         this.padding = 1;
         this.name ="Conv2D";
@@ -68,86 +93,100 @@ class Conv2DLayer
     forwardPass(input)
     {
         this.input = input;
-        return Conv2DInputForward(input, this.weights, this.bias, this.padding)   
+        return Conv2DTensorForward(this.input, this.weights, this.bias, this.padding);
     }
 
     backPropagation(layerDerivative)
     {        
-        var revKernel = ReverseKernel2D(this.weights)
-        return Conv2DInputForward(layerDerivative, revKernel, 0, this.padding)
+        var revKernel = []
+        for(var z=0;z<this.weights[0].length;z++)
+        {
+            revKernel[z] = []
+            for(var w=0;w<this.weights.length;w++)
+            {
+                revKernel[z][w] = ReverseKernel2D(this.weights[w][z])
+            }
+        }
+        
+        var zeroBias = GetZeroedVector(this.bias.length)
+        
+        return Conv2DTensorForward(layerDerivative, revKernel, zeroBias, this.padding)
     }   
     
     computeDeltas(layerDerivative)
-    {
-        var ld = [];
-        
-        for(var y=0;y<layerDerivative.length;y++)
-        {
-            for(var x=0;x<layerDerivative[0].length;x++)    
+    {       
+        this.biasDeltas = []
+        this.weightDeltas = []
+
+        for(var l=0;l<layerDerivative.length;l++)
+        {       
+            this.weightDeltas[l] = []
+
+            var ld = [];
+    
+            for(var k=0;k<layerDerivative[0].length;k++)
             {
-                ld[x+y*layerDerivative.length] = [layerDerivative[y][x]];
-            }
-        }       
-
-        var deltas = []
-        for(var i=0;i<this.weights.length*this.weights.length+1;i++)
-        {
-            deltas[i]=[]
-        }
-
-        var input = Add2DPaddingMat(this.input, this.padding)
-
-        var xx = input.length-this.weights.length+ 1;
-        var yy = input.length-this.weights.length+ 1;
-        for(var y=0;y<yy;y++)
-        {
-            for(var x=0;x<xx;x++)    
-            {
-                for(var j=0;j<this.weights.length;j++)
+                for(var j=0;j<layerDerivative[0][0].length;j++)
                 {
-                    for(var i=0;i<this.weights.length;i++)    
+                    for(var i=0;i<layerDerivative[0][0][0].length;i++)    
                     {
-                        deltas[i + j * this.weights.length][x + y * xx] = input[y+j][x+i];
+                        ld[i + j*layerDerivative[0][0][0].length] = [layerDerivative[l][k][j][i]];
                     }
+                }       
+            }                       
+            
+            
+            var k=0;
+
+            var input = Add2DPaddingMat(this.input[l][k], this.padding)
+            
+            var xx = input[0].length-this.weights[0][0][0].length + 1;
+            var yy = input.length-this.weights[0][0].length + 1;
+
+            var deltas = []    
+            for(var j=0;j<this.weights[0][0].length;j++)
+            {                    
+                for(var i=0;i<this.weights[0][0][0].length;i++)    
+                {
+                    var row = []
+                    for(var y=0;y<yy;y++)
+                    {
+                        for(var x=0;x<xx;x++)    
+                        {
+                            row.push(input[y+j][x+i]);
+                        }
+                    }
+                    deltas[i + j * this.weights[0][0].length ] = row;
                 }
-                deltas[this.weights.length*this.weights.length].push(1);
             }
+
+            
+            var row = []
+            for(var i=0;i<ld.length;i++)                                    
+                row.push(1);
+            deltas[deltas.length] = row
+        
+            var deltas = MulMat(deltas,ld);
+        
+            for(var k=0;k<this.input[l].length;k++)
+                this.weightDeltas[l][k] = ConvertMat(deltas.slice(0, 3*3), 3,3);
+
+            
+            this.biasDeltas[l]   = deltas[deltas.length-1][0]
         }
         
-        var deltas = MulMat(deltas,ld);
-        this.weightDeltas = ConvertMat(deltas.slice(0, 3*3), 3,3);
-        this.biasDeltas   = deltas[deltas.length-1][0]
     }
         
     train(LearningRate)
     {
-        this.weights = SubMat( this.weights, (MulKMat(LearningRate,this.weightDeltas)));
-        this.bias    = this.bias - LearningRate * this.biasDeltas;
+        for(var w=0;w<this.weights.length;w++)
+        {
+            for(var z=0;z<this.weights[0].length;z++)
+                this.weights[w][z] = SubMat( this.weights[w][z], (MulKMat(LearningRate,this.weightDeltas[w][z])));
+            this.bias[w]    = this.bias[w] - LearningRate * this.biasDeltas[w];
+        }
     }        
         
-    AddWeight(i,val)
-    {
-        if (i<this.weights.length*this.weights.length)
-            this.weights[Math.floor(i/3)][i%3]+=val
-        else
-            this.bias+=val
-    }
-
-    numericalDerivarive(network, input)
-    {
-        var outA = []
-        var outB = []
-        for(var i=0;i<3*3+1;i++)
-        {
-            this.AddWeight(i,.000001)
-            outA.push(ForwardPropagation(network, (input)))
-            this.AddWeight(i,-.000001)
-            outB.push(ForwardPropagation(network, (input)))
-        }
-        var out = MulKMat(1.0/.000001,SubMat(outA, outB));
-        
-        return out;
-    }
 }
 
 

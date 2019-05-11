@@ -255,3 +255,14 @@ function funcMat(func, m )
     }
     return O;
 }
+
+
+function GetZeroedVector(n)
+{
+    var O = [];
+    
+    for(var j=0;j<n;j++)
+        O[j] = 0;
+        
+    return O;
+}

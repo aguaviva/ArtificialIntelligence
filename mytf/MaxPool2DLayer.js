@@ -79,9 +79,4 @@ class MaxPool2D
 
         this.deltas = [];
     }
-
-    numericalDerivarive(network, input)
-    {
-        return [];
-    }
 }

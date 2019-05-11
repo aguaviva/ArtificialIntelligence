@@ -8,29 +8,17 @@ class Flatten
 
     forwardPass(input)
     {        
-        this.dim = GetDimensions(input)
-
         var row = []
    
-        if (this.dim.length==2)
+        for(var f=0;f<input.length;f++)
         {
-            for(var y=0;y<this.dim[0];y++)
+            for(var z=0;z<input[0].length;z++)
             {
-                for(var x=0;x<this.dim[1];x++)
+                for(var y=0;y<input[0][0].length;y++)
                 {
-                    row.push(input[y][x]);
-                }
-            }        
-        }
-        else if (this.dim.length==3)
-        {
-            for(var y=0;y<this.dim[1];y++)
-            {
-                for(var x=0;x<this.dim[2];x++)    
-                {
-                    for(var z=0;z<this.dim[0];z++)
+                    for(var x=0;x<input[0][0][0].length;x++)    
                     {
-                        row.push(input[z][y][x]);
+                        row.push(input[f][z][y][x]);
                     }
                 }
             }        
@@ -43,50 +31,26 @@ class Flatten
     {                       
         var input = layerDerivative[0];
 
-        if (this.dim.length==2)
-        {
-            var column = [];            
-            
-            for(var y=0;y<this.dim[0];y++)    
-            {
-                var row = [];
-                for(var x=0;x<this.dim[1];x++)    
-                {
-                    row.push(input[y*this.dim[1]+ x]);
-                }
-                column.push(row) 
-            }        
-            return column;
-        }
-        else if (this.dim.length==3)
-        {
-            var fm = [];
+        var fm = [];
 
-            // build dim3 matrix
-            for(var z=0;z<this.dim[0];z++)
+        for(var f=0;f<this.input.length;f++)
+        {   
+            fm[f]=[];
+            for(var z=0;z<this.input[0].length;z++)
             {
-                var column = [];            
-                for(var y=0;y<this.dim[1];y++)
+                fm[f][z]=[];
+                for(var y=0;y<this.input[0][0].length;y++)
                 {
-                    var row = [];
-                    column.push(row); 
-                }
-                fm.push(column) 
-            }     
-            var i = 0;
-            
-            for(var y=0;y<this.dim[1];y++)
-            {
-                for(var x=0;x<this.dim[2];x++)
-                {
-                    for(var z=0;z<this.dim[0];z++)
+                    fm[f][z][y]=[];
+                    for(var x=0;x<this.input[0][0][0].length;x++)    
                     {
-                        fm[z][y][x] = input[i++];
+                        fm[f][z][y][x] = input[i++];
                     }
                 }
-            }   
-            return fm;
+            }        
         }
+       
+        return fm;
     }
 
     backpropInput(output, net)
@@ -99,10 +63,5 @@ class Flatten
         this.deltas = [];
     }
 
-    train(LearningRate) {};
-    
-    numericalDerivarive(network, input)
-    {
-        return [];
-    }
+    train(LearningRate) {};    
 }

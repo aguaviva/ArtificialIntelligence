@@ -9,7 +9,7 @@ class FMLayer
         this.conv3D = []
         for(var k=0;k<this.weights.length;k++)
         {            
-            this.conv3D[k] = func([this.weights[k]], bias[k]);
+            this.conv3D[k] = func(this.weights[k], bias[k]);
             this.bias[k] = this.conv3D[k].bias
             this.name ="FM:" + this.conv3D[k].name;
         }
@@ -18,8 +18,9 @@ class FMLayer
     forwardPass(input)
     {
         var out = [];
-        for(var k=0;k<this.conv3D.length;k++)
-            out[k] = this.conv3D[k].forwardPass(input);
+        for(var i=0;i<input.length;i++)
+            for(var k=0;k<this.conv3D.length;k++)
+                out[k+i*input.length] = this.conv3D[k].forwardPass(input[i]);
         
         return out;
     }
@@ -29,7 +30,7 @@ class FMLayer
         var out = [];
         
         for(var k=0;k<this.conv3D.length;k++)
-            out[k] = this.conv3D[k].backPropagation([layerDerivative[k]]);
+            out[k] = this.conv3D[k].backPropagation(layerDerivative[k]);
 
         return  out;
     }

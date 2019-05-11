@@ -6,16 +6,58 @@ function ReverseKernel3D(kernel)
     return m;
 }
 
+/*
 function Conv3DInputForward(nonPaddedInput, weights, bias, padding)
 {
-    var out;
+    var out2=[];
+    
+    for(var k=0;k<nonPaddedInput.length;k++)
+    {
+        var out = []
 
-    out = Conv2DInputForward(nonPaddedInput[0], weights[0], bias, padding)
-    for(var k=1;k<weights.length;k++)
-        out = AddMat(out, Conv2DInputForward(nonPaddedInput[k], weights[k], 0, padding))
+        out = Conv2DInputForward(nonPaddedInput[0+k], weights[0], bias, padding)
+        for(var j=1;j<weights.length;j++)
+                out = AddMat(out, Conv2DInputForward(nonPaddedInput[j+k], weights[j], 0, padding))
+            
+        out2.push(out)
+    }
+    return out2;
+}
+*/
+
+function Conv3DInputForward(nonPaddedInput, weights, bias, padding)
+{
+    var input = [ RectangularMat(5, 5), Add2DPaddingMat(nonPaddedInput[0], padding), RectangularMat(5, 5)]
+
+    out = []
+
+    for(var z=0;z<input.length - weights.length + 1; z++)
+    {
+        out[z]=[]
+        for(var y=0;y<input[0].length - weights[0].length + 1; y++)
+        {
+            out[z][y]=[]
+            for(var x=0;x<input[0][0].length - weights[0][0].length + 1; x++)
+            {        
+                var o=0;
+                
+                for(var k=0;k<weights.length;k++)
+                {
+                    for(var j=0;j<weights[0].length;j++)
+                    {
+                        for(var i=0;i<weights[0][0].length;i++)
+                        {
+                            o += input[z+k][y+j][x+i] * weights[k][j][i];
+                        }
+                    }
+                }                
+                out[z][y][x] = o;
+            }
+        }
+    }    
+    
     return out;
 }
-
 
 class Conv3DLayer
 {
@@ -32,6 +74,7 @@ class Conv3DLayer
     {
         this.input = input;
         this.depth = this.weights.length;
+        
         return Conv3DInputForward(input, this.weights, this.bias, this.padding)
     }
     
@@ -246,32 +289,6 @@ class Conv3DFM
             this.bias[fm]    = this.bias[fm] - LearningRate * this.biasDeltas[fm];
         }
     }        
-        
-    AddWeight(i,val)
-    {
-        for(var fm=0;fm<this.weights.length;fm++)
-        {        
-            if (i<this.weights[fm].length*this.weights[fm][0].length*this.weights[fm][1].length)
-                this.weights[fm][Math.floor(i/9)][Math.floor((i%9)/3)][(i%9)%3]+=val
-            else
-                this.bias[fm]+=val
-        }
-    }
-    numericalDerivarive(network, input)
-    {
-        var outA = []
-        var outB = []
-        for(var i=0;i<this.weights.length*this.weights[0].length*this.weights[1].length+1;i++)
-        {
-            this.AddWeight(i,.000001)
-            outA.push(ForwardPropagation(network, (input)))
-            this.AddWeight(i,-.000001)
-            outB.push(ForwardPropagation(network, (input)))
-        }
-        var out = MulKMat(1.0/.000001,SubMat(outA, outB));
-        
-        return out;
-    }
 }
 
 //----------------------------------------------------------------

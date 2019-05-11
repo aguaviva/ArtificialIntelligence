@@ -11,73 +11,44 @@ class QuadraticCostLayer
     }
 
     forwardPass(input)
-    {
-        
+    {        
         var err = 0;
-        
+       
         this.diff = []
-        
-        this.diff = SubMat(input, this.value);
-        
-        var diff = this.diff;
-        
-        for(var j=0;j<diff[0].length;j++)
-        {    
-            for(var i=0;i<diff.length;i++)
+
+        for(var l=0;l<input.length;l++)
+        {
+            this.diff[l] = []
+            
+            for(var k=0;k<input[0].length;k++)
             {
-                err += diff[i][j] * diff[i][j];
+                this.diff[l][k] = SubMat(input[l][k], this.value[l][k]);
+
+                for(var j=0;j<this.diff[l][k].length;j++)
+                {    
+                    for(var i=0;i<this.diff[l][k][0].length;i++)
+                    {
+                        err += this.diff[l][k][i][j] * this.diff[l][k][i][j];
+                    }
+                }    
+            }        
+        }        
+        
+        return [[err]];        
+    }
+
+    backPropagation()
+    {
+        var out = []
+        for(var l=0;l<this.diff.length;l++)
+        {
+            out[l] = []
+            
+            for(var k=0;k<this.diff[0].length;k++)
+            {            
+                out[l][k] = MulKMat(2,this.diff[l][k]);
             }
-        }    
-        
-        return [[err]];        
-    }
-
-    backPropagation()
-    {
-        return MulKMat(2,this.diff)
-    }
-
-    backpropInput(output)
-    {
-    }
-}
-
-class QuadraticCostLayerFM
-{
-    constructor(fm)
-    {
-        this.fm = fm
-        this.name ="Quadratic cost FM";
-        this.layer = []
-        for(var i=0;i<this.fm;i++)
-            this.layer[i] = new QuadraticCostLayer()
-    }
-
-    setValue(v)
-    {
-        for(var i=0;i<this.fm;i++)
-            this.layer[i].setValue(v[i])
-    }
-
-    forwardPass(input)
-    {
-        var err = 0;
-
-        this.input = input;
-
-        for(var i=0;i<this.fm;i++)
-            err += this.layer[i].forwardPass(input[i])[0][0]
-        
-        return [[err]];        
-    }
-
-    backPropagation()
-    {
-        var out = [];
-        
-        for(var i=0;i<this.fm;i++)
-            out[i] = this.layer[i].backPropagation()
-        
+        }
         return out;
     }
 
@@ -85,3 +56,4 @@ class QuadraticCostLayerFM
     {
     }
 }
+
