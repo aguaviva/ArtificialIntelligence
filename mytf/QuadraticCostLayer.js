@@ -15,20 +15,21 @@ class QuadraticCostLayer
         var err = 0;
        
         this.diff = []
-
         for(var l=0;l<input.length;l++)
         {
             this.diff[l] = []
             
             for(var k=0;k<input[0].length;k++)
             {
-                this.diff[l][k] = SubMat(input[l][k], this.value[l][k]);
-
-                for(var j=0;j<this.diff[l][k].length;j++)
-                {    
-                    for(var i=0;i<this.diff[l][k][0].length;i++)
-                    {
-                        err += this.diff[l][k][i][j] * this.diff[l][k][i][j];
+                this.diff[l][k] = []
+                for(var j=0;j<input[0][0].length;j++)
+                {
+                    this.diff[l][k][j] = []
+                    for(var i=0;i<input[0][0][0].length;i++)                   
+                    {    
+                        var diff = input[l][k][j][i] - this.value[l][k][j][i];
+                        this.diff[l][k][j][i] = diff
+                        err += diff*diff;
                     }
                 }    
             }        
@@ -45,10 +46,19 @@ class QuadraticCostLayer
             out[l] = []
             
             for(var k=0;k<this.diff[0].length;k++)
-            {            
-                out[l][k] = MulKMat(2,this.diff[l][k]);
-            }
-        }
+            {
+                out[l][k] = []
+                for(var j=0;j<this.diff[0][0].length;j++)
+                {
+                    out[l][k][j] = []
+                    for(var i=0;i<this.diff[0][0][0].length;i++)                   
+                    {    
+                        out[l][k][j][i] = 2 * this.diff[l][k][j][i] 
+                    }
+                }    
+            }        
+        }        
+
         return out;
     }
 

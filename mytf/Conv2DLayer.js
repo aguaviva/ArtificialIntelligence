@@ -30,7 +30,7 @@ function Add2DPaddingMat(input, padding)
 
 function Conv2DMatrixForward(nonPaddedInput, weights, bias, padding)
 {
-    input = Add2DPaddingMat(nonPaddedInput, padding)
+    var input = Add2DPaddingMat(nonPaddedInput, padding)
 
     var out = []
 
@@ -65,12 +65,11 @@ function Conv2DTensorForward(input, weights, bias, padding)
     {
         out[j] = []
         for(var i=0;i<input[0].length;i++)
-        {
-            
-            var o = Conv2DMatrixForward(input[0][i], weights[j][0], bias[0], padding)   
+        {            
+            var o = Conv2DMatrixForward(input[0][i], weights[j][0], bias[j], padding)   
             for(var k=1;k<input.length;k++)
             {
-                o = AddMat(o , Conv2DMatrixForward(input[k][i], weights[j][k], bias[j], padding))   
+                o = AddMat(o , Conv2DMatrixForward(input[k][i], weights[j][k], 0, padding))   
             }
             
             out[j][i] = o
@@ -78,6 +77,49 @@ function Conv2DTensorForward(input, weights, bias, padding)
     }
 
     return out;
+}
+
+function computePartialDeltas(layerDerivative, weights, input, padding)
+{
+    var ld = [];
+
+    for(var j=0;j<layerDerivative.length;j++)
+    {
+        for(var i=0;i<layerDerivative[0].length;i++)    
+        {
+            ld[i + j*layerDerivative[0].length] = [layerDerivative[j][i]];
+        }
+    }       
+
+    var input = Add2DPaddingMat(input, padding)
+
+    var xx = input[0].length-weights[0].length + 1;
+    var yy = input.length-weights.length + 1;
+
+    var deltas = []    
+    for(var j=0;j<weights.length;j++)
+    {                    
+        for(var i=0;i<weights[0].length;i++)    
+        {
+            var row = []
+            for(var y=0;y<yy;y++)
+            {
+                for(var x=0;x<xx;x++)    
+                {
+                    row.push(input[y+j][x+i]);
+                }
+            }
+            deltas[i + j * weights.length ] = row;
+        }
+    }
+
+    var w = 0;
+    for(var i=0;i<ld.length;i++)                                    
+        w += ld[i][0];
+
+    var deltaWeights = MulMat(deltas,ld);
+
+    return [ConvertMat(deltaWeights.slice(0, 3*3), 3,3), w];
 }
 
 class Conv2DLayer
@@ -118,73 +160,46 @@ class Conv2DLayer
         this.biasDeltas = []
         this.weightDeltas = []
 
+
         for(var l=0;l<layerDerivative.length;l++)
         {       
             this.weightDeltas[l] = []
-
-            var ld = [];
     
-            for(var k=0;k<layerDerivative[0].length;k++)
-            {
-                for(var j=0;j<layerDerivative[0][0].length;j++)
+            var b = 0;
+    
+            for(var k=0;k<this.input.length;k++)
+            {               
+                
+                var o = computePartialDeltas(layerDerivative[l][0], this.weights[0][0], this.input[k][0], this.padding);
+                var ww = o[0]
+                var bb = o[1]
+                for(var i=1;i<this.input[0].length;i++)
                 {
-                    for(var i=0;i<layerDerivative[0][0][0].length;i++)    
-                    {
-                        ld[i + j*layerDerivative[0][0][0].length] = [layerDerivative[l][k][j][i]];
-                    }
-                }       
-            }                       
-            
-            
-            var k=0;
-
-            var input = Add2DPaddingMat(this.input[l][k], this.padding)
-            
-            var xx = input[0].length-this.weights[0][0][0].length + 1;
-            var yy = input.length-this.weights[0][0].length + 1;
-
-            var deltas = []    
-            for(var j=0;j<this.weights[0][0].length;j++)
-            {                    
-                for(var i=0;i<this.weights[0][0][0].length;i++)    
-                {
-                    var row = []
-                    for(var y=0;y<yy;y++)
-                    {
-                        for(var x=0;x<xx;x++)    
-                        {
-                            row.push(input[y+j][x+i]);
-                        }
-                    }
-                    deltas[i + j * this.weights[0][0].length ] = row;
+                    o = computePartialDeltas(layerDerivative[l][i], this.weights[0][0], this.input[k][i], this.padding)
+                    ww = AddMat(ww, o[0]);
+                    bb += o[1]
                 }
+                
+                this.weightDeltas[l][k] = ww;
+                
+                b = bb
             }
-
             
-            var row = []
-            for(var i=0;i<ld.length;i++)                                    
-                row.push(1);
-            deltas[deltas.length] = row
-        
-            var deltas = MulMat(deltas,ld);
-        
-            for(var k=0;k<this.input[l].length;k++)
-                this.weightDeltas[l][k] = ConvertMat(deltas.slice(0, 3*3), 3,3);
-
-            
-            this.biasDeltas[l]   = deltas[deltas.length-1][0]
+            this.biasDeltas[l] = b
         }
         
     }
         
     train(LearningRate)
     {
+    
         for(var w=0;w<this.weights.length;w++)
         {
             for(var z=0;z<this.weights[0].length;z++)
                 this.weights[w][z] = SubMat( this.weights[w][z], (MulKMat(LearningRate,this.weightDeltas[w][z])));
             this.bias[w]    = this.bias[w] - LearningRate * this.biasDeltas[w];
         }
+        
     }        
         
 }

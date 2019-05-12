@@ -10,6 +10,8 @@ class Flatten
     {        
         var row = []
    
+        this.input = input
+   
         for(var f=0;f<input.length;f++)
         {
             for(var z=0;z<input[0].length;z++)
@@ -29,7 +31,7 @@ class Flatten
 
     backPropagation(layerDerivative)
     {                       
-        var input = layerDerivative[0];
+        var input = layerDerivative;
 
         var fm = [];
 

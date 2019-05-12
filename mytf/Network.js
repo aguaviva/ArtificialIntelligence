@@ -210,10 +210,9 @@ function numericalDerivarive(network, input, stage)
         }        
     }          
     
+    var bias = []
     for(var l=0;l<stage.bias.length;l++)
     {
-        var bias = []
-        
         var w = stage.bias[l];
         stage.bias[l] += step;
         bias[l] = (ForwardPropagation(network, input) - ref)/step;
@@ -228,7 +227,7 @@ function TestNetwork(network, input, output)
 {
     network[network.length-1].setValue(output);
 
-    nets = ForwardPropagation(network, input)
+    var nets = ForwardPropagation(network, input)
     for(var i=1;i<network.length-1;i++)
     {
         Print("<pre>"+i+") Forward pass: "+network[i].name+"</pre>");
@@ -278,7 +277,7 @@ function TestResult(name, network, input, output, learningRate, expected)
     {
         out += i+" "
         network[network.length-1].setValue(output);
-        nets = ForwardPropagation(network, input);
+        var nets = ForwardPropagation(network, input);
         //DumpWeights(network, input);
         BackwardPropagation(network);
         ApplyDeltas(network, learningRate);
@@ -295,7 +294,7 @@ function DebugResult(name, network, input, output, learningRate, expected)
     for(var i=0;i<3;i++)
     {
         network[network.length-1].setValue(output);
-        nets = ForwardPropagation(network, input);
+        var nets = ForwardPropagation(network, input);
         DumpWeights(network, input);
         BackwardPropagation(network);
         ApplyDeltas(network, learningRate);
