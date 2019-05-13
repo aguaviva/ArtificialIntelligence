@@ -509,6 +509,8 @@ function i1332_conv2D3322_conv2D3322_i1332(exec) //TBD
                 [ 0.0, 0.0, 0.0 ],
                 [ 0.0, 0.0, 0.0 ]
             ],
+        ],
+        [
             [
                 [ 0.0,0.0,0.0 ],  
                 [ 0.0,0.0,0.0 ],
@@ -525,6 +527,8 @@ function i1332_conv2D3322_conv2D3322_i1332(exec) //TBD
                 [ 0.0,0.0,0.0 ],
                 [ 0.0,0.0,0.0 ]
             ],
+        ],
+        [
             [
                 [ 0.0,0.0,0.0 ],  
                 [ 0.0,0.0,0.0 ],
@@ -597,7 +601,7 @@ function i1332_conv2D3322_conv2D3322_i1332(exec) //TBD
     network.push(new NewConv2DLayer(weights2, bias2));
     network.push(new QuadraticCostLayer());
     
-    exec("i1332_conv2D3322_conv2D3322_i1332 ", network, input, output, 1, 1.3998274670247712)
+    exec("i1332_conv2D3322_conv2D3322_i1332 ", network, input, output, 0.01, 1.3998274670247712)
 }
 
 
@@ -1172,22 +1176,18 @@ function regressionTestsGood()
     i1331_conv2d3312_o1332(TestResult);  //ok 64b
     i1332_conv2D3321_o1331(TestResult); 
     i1332_conv2D3322_o1332(TestResult); 
+    i1332_conv2D3322_conv2D3322_i1332(TestResult);
+    i1331_conv2D3312_conv2D3321_i1331(TestResult);         
 }
 
 function regressionTestsBad()
-{    
-    
-    
-    
-    
+{   
     //Train_Conv2D_TF_flatten(TestResult); //ok 64b        
     //MNIST_conv_TF(DebugResult);
     //Train_Conv2D_LY_2_FM_22_TF(DebugResult);
     //Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
     //Train_Conv2D_LY_1_FM_12_TF(DebugResult); 
     //Train_Conv3D_TF_flatten(DebugResult); 
-    //i1332_conv2D3322_conv2D3322_i1332(DebugResult);      
-    //i1331_conv2D3312_conv2D3321_i1331(DebugResult);     
 }
 
 function init()
@@ -1202,7 +1202,7 @@ function init()
 </script>
 
 <body onload="init()">
-<h1>Neural network back prop using simple gradient descent, with matrix fomulation + bias for each layer</h1>
+<h1>Conv Nets test suite</h1>
 <div id="container">
 <div id="text" ></div>
 <canvas id="myCanvas" width="800" height="300"></canvas>

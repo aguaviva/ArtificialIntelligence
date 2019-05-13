@@ -150,7 +150,7 @@ class Conv2DLayer
             }
         }
         
-        var zeroBias = GetZeroedVector(this.bias.length)
+        var zeroBias = GetZeroedVector(revKernel.length)
         
         return Conv2DTensorForward(layerDerivative, revKernel, zeroBias, this.padding)
     }   
