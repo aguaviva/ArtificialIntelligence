@@ -26,15 +26,15 @@ class Flatten
             }        
         }
         
-        return [row];
+        return [[[row]]];
     }
 
     backPropagation(layerDerivative)
     {                       
-        var input = layerDerivative;
+        var input = layerDerivative[0][0][0];
 
         var fm = [];
-
+        var i=0;
         for(var f=0;f<this.input.length;f++)
         {   
             fm[f]=[];

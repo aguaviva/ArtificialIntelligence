@@ -117,12 +117,12 @@ function Train_Conv2D_TF_flatten(exec)
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights1, bias1));    
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationLayer(new ActSigmoid()));
     network.push(new NewConv2DLayer(weights2, bias2));    
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationLayer(new ActSigmoid()));
     network.push(new Flatten());
     network.push(new FullyConnected(weights3, bias3));
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationLayer(new ActSigmoid()));
     network.push(new QuadraticCostLayer());
 
     exec("Train_Conv2D_TF_flatten", network, input, output, 0.01, 1.8559800165738582)
@@ -610,14 +610,18 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
     var input = 
     [
         [
-            [ 0.0, 0.0, 0.0 ],  
-            [ 0.0, 0.0, 0.0 ],
-            [ 1.0, 0.0, 0.0 ]
+            [
+                [ 0.0, 0.0, 0.0 ],  
+                [ 0.0, 0.0, 0.0 ],
+                [ 1.0, 0.0, 0.0 ]
+            ]
         ],
         [
-            [ 0.0,0.0,0.0 ],  
-            [ 0.0,0.0,0.0 ],
-            [ 0.0,0.0,0.0 ]
+            [
+                [ 0.0,0.0,0.0 ],  
+                [ 0.0,0.0,0.0 ],
+                [ 0.0,0.0,0.0 ]
+            ]
         ]
     ]
     
@@ -728,8 +732,8 @@ function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
             
     var network = []
     network.push(new InputLayer());
-    network.push(new FMLayer(weights1, bias1, NewConv3DLayer));
-    network.push(new FMLayer(weights2, bias2, NewConv3DLayer));
+    network.push(new NewConv2DLayer(weights1, bias1));
+    network.push(new NewConv2DLayer(weights2, bias2));
     network.push(new QuadraticCostLayer());
     
     exec("Train_Conv2D_LY_2_FM_24_TF  ", network, input, output, 0.01, 0.1269055)
@@ -1177,15 +1181,15 @@ function regressionTestsGood()
     i1332_conv2D3321_o1331(TestResult); 
     i1332_conv2D3322_o1332(TestResult); 
     i1332_conv2D3322_conv2D3322_i1332(TestResult);
-    i1331_conv2D3312_conv2D3321_i1331(TestResult);         
+    i1331_conv2D3312_conv2D3321_i1331(TestResult);        
+    Train_Conv2D_TF_flatten(TestResult); //ok 64b         
 }
 
 function regressionTestsBad()
 {   
-    //Train_Conv2D_TF_flatten(TestResult); //ok 64b        
     //MNIST_conv_TF(DebugResult);
     //Train_Conv2D_LY_2_FM_22_TF(DebugResult);
-    //Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
+    Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
     //Train_Conv2D_LY_1_FM_12_TF(DebugResult); 
     //Train_Conv3D_TF_flatten(DebugResult); 
 }
@@ -1194,7 +1198,7 @@ function init()
 {
     var myCanvas = document.getElementById("myCanvas");    
     
-    regressionTestsGood();
+    //regressionTestsGood();
 
     regressionTestsBad();
     
