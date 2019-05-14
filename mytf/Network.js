@@ -46,7 +46,8 @@ function ApplyDeltas(network, LearningRate)
 {
     for(var i=1;i<network.length-1;i++)
     {
-        network[i].train(LearningRate);
+        if (network[i].train!=undefined)
+            network[i].train(LearningRate);
     }
 }
 

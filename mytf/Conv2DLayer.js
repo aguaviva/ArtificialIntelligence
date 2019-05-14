@@ -119,7 +119,9 @@ function computePartialDeltas(layerDerivative, weights, input, padding)
 
     var deltaWeights = MulMat(deltas,ld);
 
-    return [ConvertMat(deltaWeights.slice(0, 3*3), 3,3), w];
+    var dim = weights.length
+
+    return [ConvertMat(deltaWeights.slice(0, dim*dim), dim,dim), w];
 }
 
 class Conv2DLayer
@@ -128,7 +130,7 @@ class Conv2DLayer
     {
         this.weights = weights;
         this.bias = bias;
-        this.padding = 1;
+        this.padding = (weights[0][0].length-1)/2;
         this.name ="Conv2D";
     }
 

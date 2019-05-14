@@ -1,3 +1,21 @@
+function GetMatrix(ll, kk,jj,ii )
+{
+    var out = []
+    for(var l=0;l<ll;l++)
+    {           
+        out[l]=[] 
+        for(var k=0;k<kk;k++)
+        {
+            out[l][k]=[] 
+            for(var j=0;j<jj;j++)        
+            {
+                out[l][k][j]=[] 
+            }
+        }        
+    }
+    return out;
+}
+
 class Flatten
 {
     constructor(dimIni)
@@ -12,14 +30,14 @@ class Flatten
    
         this.input = input
    
-        for(var f=0;f<input.length;f++)
-        {
-            for(var z=0;z<input[0].length;z++)
+        for(var z=0;z<input[0].length;z++)
+        {            
+            for(var y=0;y<input[0][0].length;y++)
             {
-                for(var y=0;y<input[0][0].length;y++)
+                for(var x=0;x<input[0][0][0].length;x++)        
                 {
-                    for(var x=0;x<input[0][0][0].length;x++)    
-                    {
+                    for(var f=0;f<input.length;f++)
+                    {            
                         row.push(input[f][z][y][x]);
                     }
                 }
@@ -33,19 +51,18 @@ class Flatten
     {                       
         var input = layerDerivative[0][0][0];
 
-        var fm = [];
         var i=0;
-        for(var f=0;f<this.input.length;f++)
-        {   
-            fm[f]=[];
-            for(var z=0;z<this.input[0].length;z++)
+
+        var fm = GetMatrix(this.input.length, this.input[0].length,this.input[0][0].length,this.input[0][0][0].length);
+        
+        for(var z=0;z<this.input[0].length;z++)
+        {
+            for(var y=0;y<this.input[0][0].length;y++)
             {
-                fm[f][z]=[];
-                for(var y=0;y<this.input[0][0].length;y++)
+                for(var x=0;x<this.input[0][0][0].length;x++)    
                 {
-                    fm[f][z][y]=[];
-                    for(var x=0;x<this.input[0][0][0].length;x++)    
-                    {
+                    for(var f=0;f<this.input.length;f++)
+                    {   
                         fm[f][z][y][x] = input[i++];
                     }
                 }
