@@ -59,14 +59,12 @@ class MaxPool2D
             for(var k=0;k<this.routing[0].length;k++)
             {        
                 fmout[l][k] = []
-
-                var matout = this.routing[l][k];
-                for(var y=0;y<matout.length;y++)
+                
+                for(var y=0;y<this.routing[0][0].length;y++)
                 {
                     fmout[l][k][y] = []
-                    for(var x=0;x<matout[0].length;x++)
-                    {
-                        
+                    for(var x=0;x<this.routing[0][0][0].length;x++)
+                    {                        
                         var v = layerDerivative[l][k][Math.floor(y/2)][Math.floor(x/2)];
                     
                         fmout[l][k][y][x] = ((this.routing[l][k][y][x]==1)?v:0);

@@ -106,6 +106,9 @@ function Print(str)
 
 function PrintTensor(t)
 {
+    if (t==undefined)
+        return "[]";
+        
     out = "";
     var dims = GetArrayDimensions(t)
     if (dims == 4)
@@ -125,7 +128,7 @@ function PrintTensor(t)
     }
     else if (dims == 1)
     {
-        out += "[" + t.join(",") + "]";            
+        out += "<pre>[" + t.join(",") + "]</pre>";            
     }
     else if (dims == 0)
     {
@@ -151,27 +154,19 @@ function DumpWeights(network, input)
         out = ""
         out +="<table>";
         ////////
-        out +="<tr>";
-        out +="<td>name</td>";
-        if (n.weights!=undefined)
-            out +="<td>weights</td>";
-        if (n.bias!=undefined)
-            out +="<td>bias</td>";
-        out +="<td>output</td>";        
-        out +="</tr>";
+        out += "<tr>";
+        out += "<td><pre>name</pre></td>";
+        out += "<td><pre>weights</pre></td>";
+        out += "<td><pre>bias</pre></td>";
+        out += "<td><pre>output</pre></td>";        
+        out += "</tr>";
         ////////
-        out +="<tr>";
-        out +="<td>"+n.name+"</td>";
-        if (n.weights!=undefined)
-        {
-            out += "<td>" + PrintTensor(n.weights) + "</td>";            
-        }
-        
-        if (n.bias!=undefined)
-            out += "<td>" + PrintTensor(n.bias) + "</td>";            
-            
+        out += "<tr>";
+        out += "<td>" + n.name + "</td>";
+        out += "<td>" + PrintTensor(n.weights) + "</td>";            
+        out += "<td>" + PrintTensor(n.bias) + "</td>";                        
         out += "<td>" + PrintTensor(res) + "</td>";        
-        out +="<tr>";
+        out += "<tr>";
             
         out +="</table>";
         ////////
