@@ -22,6 +22,7 @@ h1 { display:block; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30
 <script type="text/javascript" src="Conv1DLayer.js"></script>
 <script type="text/javascript" src="Conv2DLayer.js"></script>
 <script type="text/javascript" src="Conv3DLayer.js"></script>
+<script type="text/javascript" src="RegDropoutLayer.js"></script>
 <script type="text/javascript" src="ActivationSigmoidLayer.js"></script>
 <script type="text/javascript" src="ActivationReluLayer.js"></script>
 <script type="text/javascript" src="FlattenLayer.js"></script>
@@ -173,7 +174,8 @@ function Train_pool(exec)
     var network = []
     network.push(new InputLayer());
     network.push(new FullyConnectedLayer(weights3, bias3));
-    //network.push(new MaxPool1D());    
+    //network.push(new MaxPool1D());        
+    network.push(new RegDropoutLayer(0));   
     network.push(new ArgMaxLayer());   
     //network.push(new CostQuadraticLayer());
     network.push(new CostCrossEntropyLayer());
