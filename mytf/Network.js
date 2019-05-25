@@ -38,7 +38,8 @@ function BackwardPropagation(network)
     for(var i=network.length-2;i>0;i--)
     {   
         layerDerivative = network[i + 1].backPropagation(layerDerivative);
-        network[i].computeDeltas(layerDerivative);
+        if (network[i].computeDeltas!=undefined)
+            network[i].computeDeltas(layerDerivative);
     }
 }
 
@@ -106,45 +107,65 @@ function Print(str)
 
 function PrintTensor(t)
 {
+    var out = "";
     if (t==undefined)
-        return "[]";
-        
-    out = "";
-    var dims = GetArrayDimensions(t)
-    if (dims == 4)
-    {
-        for(var i=0;i<t.length;i++)
-            for(var j=0;j<t[i].length;j++)
-                out += PrintMat(t[i][j]);            
-    }
-    else if (dims == 3)
-    {
-        for(var i=0;i<t.length;i++)
-            out += PrintMat(t[i]);            
-    }
-    else if (dims == 2)
-    {
-        out += PrintMat(t);            
-    }
-    else if (dims == 1)
-    {
-        out += "<pre>[" + t.join(",") + "]</pre>";            
-    }
-    else if (dims == 0)
-    {
-        out += t;            
-    }
+        out = "[]";
     else
     {
-    out += "none"
+        var pad1 = "    "
+        var pad2 = pad1+pad1
+        var pad3 = pad2+pad1
+        var pad4 = pad2+pad2
+            
+        
+        var dims = GetArrayDimensions(t)
+        if (dims == 4)
+        {
+            out += "[\n"
+            for(var i=0;i<t.length;i++)
+            {
+                out += pad1+"[\n"
+                for(var j=0;j<t[i].length;j++)
+                {
+                    out += pad2+"[\n"
+                    out += PrintMat(pad3, t[i][j]);            
+                    out += pad2+"[\n"
+                }
+                out += pad1+"]\n"
+            }
+            out += "]\n"
+        }        
+        else if (dims == 3)
+        {
+            for(var i=0;i<t.length;i++)
+            {
+                out += pad1 + PrintMat(t[i]);            
+            }
+        }
+        else if (dims == 2)
+        {
+            out += PrintMat(t);            
+        }
+        else if (dims == 1)
+        {
+            out += "[" + t.join(",") + "]";            
+        }
+        else if (dims == 0)
+        {
+            out += t;            
+        }
+        else
+        {
+            out += "none"
+        }
     }
-    return out;
+    return "<pre>" + out + "</pre>";
 }
    
 function DumpWeights(network, input)
 {    
     var res = input
-    
+        
     for(var i=0;i<network.length;i++)
     {
         var n = network[i];
@@ -156,22 +177,19 @@ function DumpWeights(network, input)
         ////////
         out += "<tr>";
         out += "<td><pre>name</pre></td>";
-        out += "<td><pre>weights</pre></td>";
-        out += "<td><pre>bias</pre></td>";
+        out += "<td><pre>weights+bias</td>";
         out += "<td><pre>output</pre></td>";        
         out += "</tr>";
         ////////
         out += "<tr>";
         out += "<td>" + n.name + "</td>";
-        out += "<td>" + PrintTensor(n.weights) + "</td>";            
-        out += "<td>" + PrintTensor(n.bias) + "</td>";                        
+        out += "<td>" + PrintTensor(n.weights) +  PrintTensor(n.bias) + "</td>";                        
         out += "<td>" + PrintTensor(res) + "</td>";        
         out += "<tr>";
-            
         out +="</table>";
         ////////
-        Print(out)
-    }
+        Print(out)            
+    }     
 }
 
 function numericalDerivarive(network, input, stage)
@@ -287,7 +305,8 @@ function TestResult(name, network, input, output, learningRate, expected)
 function DebugResult(name, network, input, output, learningRate, expected)
 {
     Print(name)    
-    for(var i=0;i<3;i++)
+    
+    for(var i=0;i<1;i++)
     {
         network[network.length-1].setValue(output);
         var nets = ForwardPropagation(network, input);

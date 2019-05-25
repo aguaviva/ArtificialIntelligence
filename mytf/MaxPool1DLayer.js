@@ -1,8 +1,8 @@
-class MaxPool2D
+class MaxPool1D
 {
     constructor()
     {
-        this.name ="MaxPool 2D";
+        this.name ="MaxPool 1D";
     }
 
     forwardPass(inputfms)
@@ -20,28 +20,24 @@ class MaxPool2D
                 var routing = this.routing[l][k];
             
                 var o = []                    
-                for(var y=0;y<input.length/2;y++)
+                for(var y=0;y<input.length;y++)
                 {
                     var row = [];
                     var rowRouting1 = [];
-                    var rowRouting2 = [];
                     for(var x=0;x<input[0].length/2;x++)
                     {
-                        var a = input[y*2  ][x*2];   var b = input[y*2  ][x*2+1];
-                        var c = input[y*2+1][x*2];   var d = input[y*2+1][x*2+1];
+                        var a = input[y][x*2];   var b = input[y][x*2+1];
                         
-                        var res = Math.max(a,Math.max(b,Math.max(c,d)));
+                        var res = Math.max(a,b);
                         
                         row.push(res);
                                                            
                         rowRouting1.push( (a==res)?1:0 ); rowRouting1.push( (b==res)?1:0 );
-                        rowRouting2.push( (c==res)?1:0 ); rowRouting2.push( (d==res)?1:0 );
                     }
                     
                     o.push(row);
                     
                     routing.push(rowRouting1);
-                    routing.push(rowRouting2);
                 }        
                 fmout[l][k] = o;
                 this.routing[l][k] = routing;
@@ -65,7 +61,7 @@ class MaxPool2D
                     fmout[l][k][y] = []
                     for(var x=0;x<this.routing[0][0][0].length;x++)
                     {                        
-                        var v = layerDerivative[l][k][Math.floor(y/2)][Math.floor(x/2)];
+                        var v = layerDerivative[l][k][y][Math.floor(x/2)];
                     
                         fmout[l][k][y][x] = ((this.routing[l][k][y][x]>0)?v:0);
                     }

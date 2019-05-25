@@ -35,7 +35,7 @@ class QuadraticCostLayer
             }        
         }        
         
-        return [[err]];        
+        return [[[[err]]]];        
     }
 
     backPropagation()

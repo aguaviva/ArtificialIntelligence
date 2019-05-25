@@ -3,7 +3,7 @@ function RandomMat(inp,neurons)
     var L = []
     for(var i=0;i<neurons;i++)
     {
-        L[i] = [];7
+        L[i] = [];
         for(var j=0;j<inp;j++)
         {
             L[i].push(2*Math.random()-1);
@@ -14,7 +14,7 @@ function RandomMat(inp,neurons)
 
 function GetDimensions(m)
 {
-    o = []
+    var o = []
     
     for(;;)
     {
@@ -39,42 +39,51 @@ function GetArrayDimensions(m)
     
 }
 
-function PrintMat2D(m)
+function PrintMat2D(prefix, m)
 {
-    var str = "<pre><table>";
+    var str = "";
     for(var j=0;j<m.length;j++)
     {
-        str += "<tr><td>[</td>";
+        str += prefix+"[";
         for(var i=0;i<m[j].length;i++)
-        {            
-            str += "<td>" + m[j][i].toFixed(10) + "</td>";
+        {          
+            var v = m[j][i].toFixed(10); 
+            if (v>=0)
+             str +=" " + v
+            else 
+                str += v;
+            if (i<m[j].length-1)
+                str += ", "
+            
         }
-        str += "<td>]</td></tr>";
+        str += "]\n";
     }
-    str += "</table></pre>";
+    str += "";
 
     return str;
 }
 
-function PrintMat(mm)
+function PrintMat(prefix, mm)
 {
     var d = GetDimensions(mm);
     var dim = d.length
     
     if (dim==2)
     {
-        return PrintMat2D(mm)
+        return PrintMat2D(prefix, mm)
     }
     else if (dim==3)
     {
         var str = ""
         for(var k=0; k<d[0];k++)
         {
-            str += PrintMat(mm[k])
+            str += prefix+ PrintMat(mm[k])
         }
     }    
     return str;
 }
+
+
 
 function RectangularMat(dimX, dimY)
 {
