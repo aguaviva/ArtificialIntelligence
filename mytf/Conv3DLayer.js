@@ -290,11 +290,3 @@ class Conv3DFM
         }
     }        
 }
-
-//----------------------------------------------------------------
-
-
-function NewConv3DLayer(weights, bias)
-{
-    return new Conv3DLayer(weights, bias);
-}

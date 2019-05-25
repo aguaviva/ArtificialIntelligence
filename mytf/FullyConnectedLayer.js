@@ -1,8 +1,8 @@
-class FullyConnected
+class FullyConnectedLayer
 {
     constructor(weights, bias)
     {
-        this.name ="Fully";
+        this.name ="FullyConnectedLayer";
         this.weights = weights
         this.bias = bias
     }

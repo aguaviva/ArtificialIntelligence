@@ -18,18 +18,15 @@ class QuadraticCostLayer
         assert(input[0][0][0].length == this.value[0][0][0].length);
         
         var err = 0;
+        
+        this.diff = TensorZero(input.length, input[0].length, input[0][0].length, input[0][0][0].length);        
        
-        this.diff = []
         for(var l=0;l<input.length;l++)
-        {
-            this.diff[l] = []
-            
+        {            
             for(var k=0;k<input[0].length;k++)
             {
-                this.diff[l][k] = []
                 for(var j=0;j<input[0][0].length;j++)
                 {
-                    this.diff[l][k][j] = []
                     for(var i=0;i<input[0][0][0].length;i++)                   
                     {    
                         var diff = input[l][k][j][i] - this.value[l][k][j][i];

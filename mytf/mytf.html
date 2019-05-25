@@ -23,7 +23,8 @@ h1 { display:block; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30
 <script type="text/javascript" src="Conv1DLayer.js"></script>
 <script type="text/javascript" src="Conv2DLayer.js"></script>
 <script type="text/javascript" src="Conv3DLayer.js"></script>
-<script type="text/javascript" src="ActivationLayer.js"></script>
+<script type="text/javascript" src="ActivationSigmoidLayer.js"></script>
+<script type="text/javascript" src="ActivationReluLayer.js"></script>
 <script type="text/javascript" src="FlattenLayer.js"></script>
 <script type="text/javascript" src="MaxPool1DLayer.js"></script>
 <script type="text/javascript" src="MaxPool2DLayer.js"></script>
@@ -120,12 +121,12 @@ function Train_Conv2D_TF_flatten(exec)
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights1, bias1));    
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new NewConv2DLayer(weights2, bias2));    
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new Flatten());
-    network.push(new FullyConnected(weights3, bias3));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new FullyConnectedLayer(weights3, bias3));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("Train_Conv2D_TF_flatten", network, input, output, 0.01, 1.8559800165738582)
@@ -171,7 +172,7 @@ function Train_pool(exec)
 
     var network = []
     network.push(new InputLayer());
-    network.push(new FullyConnected(weights3, bias3));
+    network.push(new FullyConnectedLayer(weights3, bias3));
     network.push(new MaxPool1D());    
     network.push(new QuadraticCostLayer());
 
@@ -219,7 +220,7 @@ function i1331_conv2d3311_o1331(exec)  //ok
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights, bias));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1331_conv2d3311_o1331 ", network, input, output, 0.01,  15.03912820346275047712)
@@ -276,9 +277,9 @@ function i1331_conv2D3311_conv2D3311_o1331(exec) // OK
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights1, bias1));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new NewConv2DLayer(weights2, bias2));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1331_conv2D3311_conv2D3311_o1331 ", network, input, output, 0.01, 16.56467818577763750909)
@@ -335,7 +336,7 @@ function i1332_conv2D3321_o1331(exec) //OK
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights, bias));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1332_conv2D3321_o1331 ", network, input, output, 0.01, 2.133445775792389)
@@ -393,7 +394,7 @@ function i1331_conv2d3312_o1332(exec) //OK
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights, bias));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1331_conv2d3312_o1332 ", network, input, output, 0.01, 17.17946415104465)
@@ -469,7 +470,7 @@ function i1332_conv2D3322_o1332(exec) //ok
     var network = []
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights, bias));
-    network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1332_conv2D3322_o1332  ", network, input, output, 0.01, 4.137594950310169)
@@ -541,7 +542,7 @@ function i1331_conv2D3312_conv2D3321_i1331(exec) //OK
     network.push(new InputLayer());
     network.push(new NewConv2DLayer(weights1, bias1));
     network.push(new NewConv2DLayer(weights2, bias2));
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    //network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
 
     exec("i1331_conv2D3312_conv2D3321_i1331 ", network, input, output, 0.01, 0.11052561596880975)
@@ -1214,15 +1215,14 @@ function MNIST_conv_TF(exec)
     var network = []
     network.push(new InputLayer());
     
-    network.push(new NewConv2DLayer(weights1, bias1));
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new Conv2DLayer(weights1, bias1));
+    network.push(new ActivationReluLayer());
     network.push(new MaxPool2DLayer());    
-    //network.push(new AveragePool2D());   
-    network.push(new NewConv2DLayer(weights2, bias2));
-    //network.push(new ActivationLayer(new ActSigmoid()));
+    network.push(new Conv2DLayer(weights2, bias2));
+    network.push(new ActivationReluLayer());
     network.push(new Flatten());
-    network.push(new FullyConnected(weights3, bias3));
-    network.push(new FullyConnected(weights4, bias4));
+    network.push(new FullyConnectedLayer(weights3, bias3));
+    network.push(new FullyConnectedLayer(weights4, bias4));
     network.push(new QuadraticCostLayer());    
     
 
@@ -1342,7 +1342,7 @@ function init()
 {
     var myCanvas = document.getElementById("myCanvas");    
     
-    //regressionTestsGood();
+    regressionTestsGood();
 
     regressionTestsBad();
     

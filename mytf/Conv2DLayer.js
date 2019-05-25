@@ -213,9 +213,3 @@ class Conv2DLayer
     }        
         
 }
-
-
-function NewConv2DLayer(weights, bias)
-{
-    return new Conv2DLayer(weights, bias);
-}
