@@ -1,4 +1,4 @@
-class QuadraticCostLayer
+class CostQuadraticLayer
 {
     constructor()
     {
@@ -62,10 +62,6 @@ class QuadraticCostLayer
         }        
 
         return out;
-    }
-
-    backpropInput(output)
-    {
     }
 }
 

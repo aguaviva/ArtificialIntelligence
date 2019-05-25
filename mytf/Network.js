@@ -254,7 +254,7 @@ function TestNetwork(network, input, output)
     BackwardPropagation(network, nets);
 
     // analytical derivative
-    for(var i=1;i<network.length-1;i++)
+    for(var i=1;i<network.length;i++)
     {
         str += "<pre>"+i+" '" + network[i].name + "'</pre>";
         if (network[i].weights!=undefined)
@@ -267,7 +267,7 @@ function TestNetwork(network, input, output)
     str += "</td><td>";
 
     //numerical derivative
-    for(var i=1;i<network.length-1;i++)
+    for(var i=1;i<network.length;i++)
     {
         str += "<pre>"+i+" '" + network[i].name + "'</pre>";
         if (network[i].weights!=undefined)
