@@ -20,7 +20,7 @@ class MaxPool2DLayer
                     {
                         var ix = -1;
                         var iy = -1;
-                        var max = -1e+50;
+                        var max = -Infinity;
                         for(var ay = 0;ay<2;ay++)
                         {
                             for(var ax = 0;ax<2;ax++)
@@ -37,38 +37,14 @@ class MaxPool2DLayer
                         
                         fmout[l][k][y/2][x/2] = max;
 
-                        var idx = ix + (iy*2);
-
-
                         // compute routing matrix
                         for(var ay = 0;ay<2;ay++)
                         {
                             for(var ax = 0;ax<2;ax++)
                             {                                
-                                if (ay==iy && ax==ix)
-                                {
-                                    this.routing[l][k][y+ay][x+ax] = idx;
-                                }
-                                else
-                                {
-                                    this.routing[l][k][y+ay][x+ax] = -1;
-                                }
+                                this.routing[l][k][y+ay][x+ax] = (ay==iy && ax==ix)?(ix + (iy*2)):-1;
                             }
                         }
-
-                        
-                        /*
-                        // this gets the right weights
-                        
-                        for(var ay = 0;ay<2;ay++)
-                        {
-                            for(var ax = 0;ax<2;ax++)
-                            {                                
-                                var v = inputfms[l][k][y + ay][x + ax];
-                                this.routing[l][k][y+ay][x+ax] = (v==max)?idx:-1;
-                            }
-                        }
-                        */
                     }
                 }        
             }

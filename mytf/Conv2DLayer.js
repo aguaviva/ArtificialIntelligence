@@ -81,21 +81,6 @@ function Conv2DTensorForward(input, weights, bias)
     return out;
 }
 
-/*
-function computePartialDeltas(layerDerivative, input)
-{
-    var zeroBias = GetZeroedVector(input.length)
-    var out = Conv2DTensorForward([[input]], [[layerDerivative]], [0])[0][0];
-    
-    var w = 0;
-    for(var j=0;j<layerDerivative.length;j++)
-        for(var i=0;i<layerDerivative[0].length;i++)    
-            w += layerDerivative[j][i];
-
-    return [out, w]
-}
-*/
-
 function computePartialDeltas(layerDerivative, weights, input)	
 {
     var ld = [];	 
@@ -137,12 +122,6 @@ function computePartialDeltas(layerDerivative, weights, input)
     for(var i=0;i<ld.length;i++)                                    	
        w += ld[i][0];	
 
-    {
-        console.log(w)
-        var a=""; for (var i=0;i<ld.length;i++) {a=a+ld[i][0];  if (ld[i][0]>0) a+= "+";}
-        console.log(a)
-    }
-
     var deltaWeights = MulMat(deltas,ld);	
     
     var dim = weights.length	
@@ -183,8 +162,6 @@ class Conv2DLayer
     
     computeDeltas(layerDerivative)
     {       
-        console.log("computeDeltas")
-    
         this.biasDeltas = []
         this.weightDeltas = []
 
@@ -208,7 +185,6 @@ class Conv2DLayer
                     ww = AddMat(ww, o[0]);                    
                     bb += o[1];
                 }
-                console.log(l,k,bb*0.000001)
                 this.weightDeltas[l][k] = ww;
             }
             
@@ -219,7 +195,6 @@ class Conv2DLayer
         
     train(LearningRate)
     {
-        console.log("train")
         for(var w=0;w<this.weights.length;w++)
         {
             assert(this.weightDeltas.length == this.weights.length);
@@ -231,7 +206,6 @@ class Conv2DLayer
                 this.weights[w][z] = SubMat( this.weights[w][z], (MulKMat(LearningRate,this.weightDeltas[w][z])));
             }
             
-            console.log(this.bias[w] - LearningRate * this.biasDeltas[w], this.bias[w], -LearningRate*this.biasDeltas[w] )
             this.bias[w]    = this.bias[w] - LearningRate * this.biasDeltas[w];
             
         }
