@@ -40,17 +40,17 @@ class AveragePool2D
     backPropagation(layerDerivative)    
     {              
         var fmout = [];
-        for(var l=0;l<this.layerDerivative.length;l++)
+        for(var l=0;l<layerDerivative.length;l++)
         {        
             fmout[l] = []
-            for(var k=0;k<this.layerDerivative[0].length;k++)
+            for(var k=0;k<layerDerivative[0].length;k++)
             {        
                 fmout[l][k] = []
                 
-                for(var y=0;y<this.layerDerivative[0][0].length;y++)
+                for(var y=0;y<layerDerivative[0][0].length*2;y++)
                 {
                     fmout[l][k][y] = []
-                    for(var x=0;x<this.layerDerivative[0][0][0].length*2;x++)
+                    for(var x=0;x<layerDerivative[0][0][0].length*2;x++)
                     {                        
                         var v = layerDerivative[l][k][Math.floor(y/2)][Math.floor(x/2)];
                     

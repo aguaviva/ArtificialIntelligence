@@ -1,4 +1,4 @@
-class MaxPool2D
+class MaxPool2DLayer
 {
     constructor()
     {
@@ -7,44 +7,70 @@ class MaxPool2D
 
     forwardPass(inputfms)
     {               
-        this.routing = [];        
-        var fmout = []        
+        this.routing = TensorZero(inputfms.length, inputfms[0].length, inputfms[0][0].length, inputfms[0][0][0].length);        
+        var fmout    = TensorZero(inputfms.length, inputfms[0].length, inputfms[0][0].length/2, inputfms[0][0][0].length/2);        
+        
         for(var l=0;l<inputfms.length;l++)
         {        
-            fmout[l] = [] 
-            this.routing[l] = []        
             for(var k=0;k<inputfms[0].length;k++)
             {        
-                this.routing[l][k] = []
-                var input = inputfms[l][k];
-                var routing = this.routing[l][k];
-            
-                var o = []                    
-                for(var y=0;y<input.length/2;y++)
+                for(var y=0;y<inputfms[0][0].length;y+=2)
                 {
-                    var row = [];
-                    var rowRouting1 = [];
-                    var rowRouting2 = [];
-                    for(var x=0;x<input[0].length/2;x++)
+                    for(var x=0;x<inputfms[0][0][0].length;x+=2)
                     {
-                        var a = input[y*2  ][x*2];   var b = input[y*2  ][x*2+1];
-                        var c = input[y*2+1][x*2];   var d = input[y*2+1][x*2+1];
+                        var ix = -1;
+                        var iy = -1;
+                        var max = -1e+50;
+                        for(var ay = 0;ay<2;ay++)
+                        {
+                            for(var ax = 0;ax<2;ax++)
+                            {
+                                var v = inputfms[l][k][y + ay][x + ax];
+                                if (v>max)
+                                {
+                                    ix = ax;
+                                    iy = ay;
+                                    max = v
+                                }
+                            }
+                        }
                         
-                        var res = Math.max(a,Math.max(b,Math.max(c,d)));
+                        fmout[l][k][y/2][x/2] = max;
+
+                        var idx = ix + (iy*2);
+
+
+                        // compute routing matrix
+                        for(var ay = 0;ay<2;ay++)
+                        {
+                            for(var ax = 0;ax<2;ax++)
+                            {                                
+                                if (ay==iy && ax==ix)
+                                {
+                                    this.routing[l][k][y+ay][x+ax] = idx;
+                                }
+                                else
+                                {
+                                    this.routing[l][k][y+ay][x+ax] = -1;
+                                }
+                            }
+                        }
+
                         
-                        row.push(res);
-                                                           
-                        rowRouting1.push( (a==res)?1:0 ); rowRouting1.push( (b==res)?1:0 );
-                        rowRouting2.push( (c==res)?1:0 ); rowRouting2.push( (d==res)?1:0 );
+                        /*
+                        // this gets the right weights
+                        
+                        for(var ay = 0;ay<2;ay++)
+                        {
+                            for(var ax = 0;ax<2;ax++)
+                            {                                
+                                var v = inputfms[l][k][y + ay][x + ax];
+                                this.routing[l][k][y+ay][x+ax] = (v==max)?idx:-1;
+                            }
+                        }
+                        */
                     }
-                    
-                    o.push(row);
-                    
-                    routing.push(rowRouting1);
-                    routing.push(rowRouting2);
                 }        
-                fmout[l][k] = o;
-                this.routing[l][k] = routing;
             }
         }        
         return fmout;
@@ -52,22 +78,36 @@ class MaxPool2D
 
     backPropagation(layerDerivative)    
     {              
-        var fmout = [];
-        for(var l=0;l<this.routing.length;l++)
+        assert(layerDerivative.length == this.routing.length);
+        assert(layerDerivative[0].length == this.routing[0].length);
+        assert(layerDerivative[0][0].length*2 == this.routing[0][0].length);
+        assert(layerDerivative[0][0][0].length*2 == this.routing[0][0][0].length);
+    
+        var fmout = TensorZero(layerDerivative.length, layerDerivative[0].length, layerDerivative[0][0].length*2, layerDerivative[0][0][0].length*2);        
+    
+        for(var l=0;l<layerDerivative.length;l++)
         {        
-            fmout[l] = []
-            for(var k=0;k<this.routing[0].length;k++)
+            for(var k=0;k<layerDerivative[0].length;k++)
             {        
-                fmout[l][k] = []
-                
-                for(var y=0;y<this.routing[0][0].length;y++)
+                for(var y=0;y<layerDerivative[0][0].length;y++)
                 {
-                    fmout[l][k][y] = []
-                    for(var x=0;x<this.routing[0][0][0].length;x++)
+                    for(var x=0;x<layerDerivative[0][0][0].length;x++)
                     {                        
-                        var v = layerDerivative[l][k][Math.floor(y/2)][Math.floor(x/2)];
-                    
-                        fmout[l][k][y][x] = ((this.routing[l][k][y][x]>0)?v:0);
+                        var v = layerDerivative[l][k][y][x];
+                        
+                        for(var ay = 0;ay<2;ay++)
+                        {
+                            for(var ax = 0;ax<2;ax++)
+                            {                                
+                                var idx = this.routing[l][k][2*y+ay][2*x+ax];
+                                if (idx>=0)
+                                {
+                                    var ix = (idx % 2);
+                                    var iy = Math.floor(idx/ 2);
+                                    fmout[l][k][2*y + ay][2*x + ax] = v;
+                                }
+                            }
+                        }
                     }
                 }                        
             }

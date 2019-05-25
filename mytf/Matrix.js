@@ -83,6 +83,30 @@ function PrintMat(prefix, mm)
     return str;
 }
 
+function TensorZero(dimZ, dimW, dimY, dimX)
+{
+    var fmout = [];
+    for(var z=0;z<dimZ;z++)
+    {        
+        fmout[z] = []
+        for(var w=0;w<dimW;w++)
+        {        
+            fmout[z][w] = []
+            
+            for(var y=0;y<dimY;y++)
+            {
+                fmout[z][w][y] = []
+                for(var x=0;x<dimX;x++)
+                {                                       
+                    fmout[z][w][y][x] = 0;
+                }
+            }                        
+        }
+    }
+    
+    return fmout;                
+}
+
 
 
 function RectangularMat(dimX, dimY)
