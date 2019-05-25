@@ -32,6 +32,7 @@ h1 { display:block; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30
 <script type="text/javascript" src="AveragePool2DLayer.js"></script>
 <script type="text/javascript" src="QuadraticCostLayer.js"></script>
 <script type="text/javascript" src="FullyConnectedLayer.js"></script>
+<script type="text/javascript" src="ArgMaxLayer.js"></script>
 <script type="text/javascript" src="Network.js"></script>
 </head>
 <script>
@@ -173,6 +174,7 @@ function Train_pool(exec)
     network.push(new InputLayer());
     network.push(new FullyConnectedLayer(weights3, bias3));
     network.push(new MaxPool1D());    
+    network.push(new ArgMaxLayer());   
     network.push(new QuadraticCostLayer());
 
     exec("Train_pool", network, input, output, 0.01, 1.8559800165738582)
@@ -1087,7 +1089,7 @@ function MNIST_conv_TF(exec)
     network.push(new FullyConnectedLayer(weights3, bias3));
     network.push(new ActivationReluLayer());
     network.push(new FullyConnectedLayer(weights4, bias4));
-    network.push(new ActivationReluLayer());   
+    network.push(new ActivationReluLayer());       
     network.push(new QuadraticCostLayer());        
 
     exec("MNIST_conv_TF", network, input, output, 0.000001, 548.5579833984)
@@ -1110,6 +1112,7 @@ function regressionTestsGood()
 function regressionTestsBad()
 {   
     //Train_pool(DebugResult)
+    Train_pool(DebugResult);
 }
 
 function init()
