@@ -123,7 +123,7 @@ function Train_Conv2D_TF_flatten(exec)
     network.push(new ActivationSigmoidLayer());
     network.push(new Conv2DLayer(weights2, bias2));    
     network.push(new ActivationSigmoidLayer());
-    network.push(new Flatten());
+    network.push(new FlattenLayer());
     network.push(new FullyConnectedLayer(weights3, bias3));
     network.push(new ActivationSigmoidLayer());
     network.push(new QuadraticCostLayer());
@@ -653,142 +653,6 @@ function i1332_conv2D3322_conv2D3322_i1332(exec) //TBD
     exec("i1332_conv2D3322_conv2D3322_i1332 ", network, input, output, 0.01, 1.3998274670247712)
 }
 
-
-function Train_Conv2D_LY_2_FM_24_TF(exec) //TBD
-{
-    var input = 
-    [
-        [
-            [
-                [ 0.0, 0.0, 0.0 ],  
-                [ 0.0, 0.0, 0.0 ],
-                [ 1.0, 0.0, 0.0 ]
-            ]
-        ],
-        [
-            [
-                [ 0.0,0.0,0.0 ],  
-                [ 0.0,0.0,0.0 ],
-                [ 0.0,0.0,0.0 ]
-            ]
-        ]
-    ]
-    
-    var output  = 
-    [
-        [
-            [ 0.0,0.0,0.0 ],  
-            [ 0.0,0.0,0.0 ],
-            [ 0.0,0.0,0.0 ]
-        ],
-        [
-            [ 0.0,0.0,0.0 ],  
-            [ 0.0,0.0,0.0 ],
-            [ 0.0,0.0,0.0 ]
-        ],
-        [
-            [ 0.0,0.0,0.0 ],  
-            [ 0.0,0.0,0.0 ],
-            [ 0.0,0.0,0.0 ]
-        ],
-        [
-            [ 0.0,0.0,0.0 ],  
-            [ 0.0,0.0,0.0 ],
-            [ 0.0,0.0,0.0 ]
-        ]
-    ]
-
-    var weights1 = 
-[
-  [
-    [
-      [-0.24853668, 0.23601204, 0.16461182],
-      [0.2003246, 0.0025901496, -0.23138984],
-      [0.3304258, 0.36111665, 0.21520424]
-    ],
-    [
-      [-0.38386703, 0.10180086, 0.20103401],
-      [0.18123108, 0.1387158, 0.026846379],
-      [-0.1349195, -0.2095514, -0.36210072]
-    ]
-  ],
-  [
-    [
-      [-0.110283494, -0.36310384, 0.27908146],
-      [0.26470363, -0.25222933, -0.37095994],
-      [-0.3085345, -0.08485702, 0.062185228]
-    ],
-    [
-      [-0.1991027, 0.10621804, 0.14446682],
-      [-0.15716869, -0.20142771, -0.38632715],
-      [0.1900627, 0.25583363, 0.17615098]
-    ]
-  ]
-]
-    
-    var bias1 = [0,0]
-
-    var weights2 = 
-[
-  [
-    [
-      [-0.12676565, -0.20651111, 0.32221046],
-      [0.21329954, -0.27469677, 0.24681988],
-      [-0.0866445, -0.25587958, 0.078116745]
-    ],
-    [
-      [-0.13340926, -0.016221374, -0.27354512],
-      [-0.021350294, -0.1342988, 0.20327982],
-      [-0.042877346, -0.26390076, -0.16465561]
-    ],
-    [
-      [0.2972131, -0.0337027, 0.102019876],
-      [0.20948318, 0.062268108, -0.23811468],
-      [0.05638823, -0.24370313, 0.011695623]
-    ],
-    [
-      [0.08385587, -0.21601796, -0.2577843],
-      [-0.032729, 0.13807836, 0.20011196],
-      [0.22134534, -0.027920634, -0.022440761]
-    ]
-  ],
-  [
-    [
-      [-0.25969118, -0.07850313, 0.25422964],
-      [0.17150483, -0.21029234, -0.23762648],
-      [0.055344105, -0.179319, -0.046913385]
-    ],
-    [
-      [-0.19464159, 0.25079384, -0.06437731],
-      [-0.30743656, 0.0930357, -0.1765934],
-      [0.049745083, -0.105486244, -0.13695924]
-    ],
-    [
-      [0.29231504, 0.18567976, -0.10532141],
-      [-0.15208864, -0.102319956, 0.13592282],
-      [0.30280116, -0.23696908, -0.17300963]
-    ],
-    [
-      [-0.14724302, 0.18110237, -0.20105147],
-      [0.0544962, -0.11648576, -0.10330105],
-      [-0.10764448, -0.021621704, 0.18419734]
-    ]
-  ]
-]
-    
-    var bias2 = [0,0]
-
-            
-    var network = []
-    network.push(new InputLayer());
-    network.push(new Conv2DLayer(weights1, bias1));
-    network.push(new Conv2DLayer(weights2, bias2));
-    network.push(new QuadraticCostLayer());
-    
-    exec("Train_Conv2D_LY_2_FM_24_TF  ", network, input, output, 0.01, 0.1269055)
-}
-
-
 function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
 {
     var input = 
@@ -799,8 +663,9 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
                 [ 0.0, 0.0, 0.0 ],
                 [ 0.0, 0.0, 0.0 ],
                 [ 1.0, 0.0, 0.0 ]
-            ]
-            ,
+            ],
+        ],
+        [            
             [
                 [ 0.0, 0.0, 0.0 ],  
                 [ 0.0, 0.0, 0.0 ],
@@ -818,8 +683,9 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
                 [ 0.0, 0.0, 0.0 ],
                 [ 0.0, 0.0, 0.0 ],
                 [ 0.0, 0.0, 0.0 ]
-            ]
-            ,
+            ],
+        ],
+        [           
             [
                 [ 0.0, 0.0, 0.0 ],  
                 [ 0.0, 0.0, 0.0 ],
@@ -848,8 +714,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
                 [-0.38386703, 0.10180086, 0.20103401],
                 [0.18123108, 0.1387158, 0.026846379],
                 [-0.1349195, -0.2095514, -0.36210072]
-            ]
-            ,
+            ],
             [
                 [-0.1991027, 0.10621804, 0.14446682],
                 [-0.15716869, -0.20142771, -0.38632715],
@@ -862,7 +727,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
             
     var network = []
     network.push(new InputLayer());
-    network.push(new Conv3DLayer(weights, bias));
+    network.push(new Conv2DLayer(weights, bias));
     network.push(new QuadraticCostLayer());
     
     exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.01, 1.0946335)
@@ -1212,107 +1077,21 @@ function MNIST_conv_TF(exec)
   
     
     var network = []
-    network.push(new InputLayer());
-    
+    network.push(new InputLayer());    
     network.push(new Conv2DLayer(weights1, bias1));
     network.push(new ActivationReluLayer());
     network.push(new MaxPool2DLayer());    
     network.push(new Conv2DLayer(weights2, bias2));
     network.push(new ActivationReluLayer());
-    network.push(new Flatten());
+    network.push(new FlattenLayer());
     network.push(new FullyConnectedLayer(weights3, bias3));
+    network.push(new ActivationReluLayer());
     network.push(new FullyConnectedLayer(weights4, bias4));
-    network.push(new QuadraticCostLayer());    
-    
+    network.push(new ActivationReluLayer());   
+    network.push(new QuadraticCostLayer());        
 
-    exec("MNIST_conv_TF", network, input, output, 0.000001, 0.2718303)
+    exec("MNIST_conv_TF", network, input, output, 0.000001, 548.5579833984)
 }
-
-function MNIST_conv_TF_biasBug(exec)
-{
-
-    var input = 
-    [
-        [
-            [
-                [ 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [ -0.08016754, 0.01282061, 0.35579744, -0.59449440, -0.67768276, 0.68781549, 1.46728075, 1.68877220, 1.56133235, -2.00056386],
-                [ 0.23341942, -0.82390147, -0.79098356, 0.56039596, -0.61123407, 1.91687596, -0.74604672, 1.64497244, -1.10399675, -0.11699112],
-                [ -0.93294680, -0.34403381, -2.37116241, -1.43796575, -0.08516861, 1.09313345, 1.11867619, -0.09029349, -1.08179951, -0.53231722],
-                [ -0.06327412, 0.07424675, -1.81953967, 0.30803666, 2.24175096, 0.10310568, -0.70534545, -0.76693177, 1.55273652, -1.04003561],
-                [ 0.33405796, -1.46100056, -0.37598357, 1.60502279, 0.91579366, 1.64982653, 1.19729781, -1.08322680, 1.14369559, -0.36785260],
-                [ -0.08016754, 0.01282061, 0.35579744, -0.59449440, -0.67768276, 0.68781549, 1.46728075, 1.68877220, 1.56133235, -2.00056386]
-            ]
-        ]
-    ]
-    
-    var output =     
-
-    [
-        [
-            [
-            
-                [ 1.00000000, 0.00000000, 0.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, -5.00000000, 0.00000000, 5.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 4.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 4.00000000, 0.00000000, 0.00000000],
-                [ 0.00000000, 0.00000000, 4.00000000, 0.00000000, 0.00000000],
-            ]
-        ]
-    ]
-
-    var weights1 = 
-    [
-        [
-            [
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [5.00000000,  1.00000000,  0.00000000,0,0],
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [5.00000000,  1.00000000,  0.00000000,0,0],
- 
-            ],
-        ]
-    ]
-
-    var bias1 = [0.1]
-
-    var weights2 = 
-    [
-        [
-            [
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [5.00000000,  1.00000000,  0.00000000,0,0],
-                [0.00000000,  0.00000000,  -4.00000000,0,0],
-                [5.00000000,  1.00000000,  0.00000000,0,0],
- 
-            ],
-        ]
-    ]
-
-    var bias2 = [0.0]
-
-
-    var network = []
-    network.push(new InputLayer());
-    //network.push(new MaxPool2DLayer());    
-    network.push(new Conv2DLayer(weights1, bias1));
-    //network.push(new MaxPool2DLayer());    
-    network.push(new AveragePool2D());    
-    network.push(new Conv2DLayer(weights2, bias2));
-    network.push(new QuadraticCostLayer());    
-    
-
-    //exec("MNIST_conv_TF", network, input, output, 0.000001, 0.2718303)
-    exec("MNIST_conv_TF", network, input, output, 0.000001, 0.2718303)
-
-
-}
-
 
 function regressionTestsGood()
 {    
@@ -1324,17 +1103,13 @@ function regressionTestsGood()
     i1332_conv2D3322_conv2D3322_i1332(TestResult);
     i1331_conv2D3312_conv2D3321_i1331(TestResult);        
     Train_Conv2D_TF_flatten(TestResult); //ok 64b         
+    Train_Conv2D_LY_1_3x4_FM_22_TF(TestResult); 
+    MNIST_conv_TF(TestResult);
 }
 
 function regressionTestsBad()
 {   
-    MNIST_conv_TF(DebugResult);
-    //MNIST_conv_TF_biasBug(DebugResult);
     //Train_pool(DebugResult)
-    //Train_Conv2D_LY_2_FM_22_TF(DebugResult);
-    //Train_Conv2D_LY_2_FM_24_TF(DebugResult); // not working!
-    //Train_Conv2D_LY_1_FM_12_TF(DebugResult); 
-    //Train_Conv3D_TF_flatten(DebugResult); 
 }
 
 function init()

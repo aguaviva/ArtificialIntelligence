@@ -11,7 +11,7 @@ function Add2DPaddingMat(input, padding)
     var b = [];
 
     for(var j=0;j<padding;j++)
-        b.push(Array(input.length+2*padding).fill(0));    
+        b.push(Array(input[0].length+2*padding).fill(0));    
 
               
     for(var i=0;i<input.length;i++)
@@ -25,7 +25,7 @@ function Add2DPaddingMat(input, padding)
     }
     
     for(var j=0;j<padding;j++)
-        b.push(Array(input.length+2*padding).fill(0));
+        b.push(Array(input[0].length+2*padding).fill(0));
         
     return b;
 }
@@ -37,10 +37,10 @@ function Conv2DMatrixForward(nonPaddedInput, weights, bias)
     var input = Add2DPaddingMat(nonPaddedInput, padding)
 
     var out = []
-    for(var y=0;y<input[0].length - weights[0].length + 1; y++)
+    for(var y=0;y<input.length - weights.length + 1; y++)
     {
         out[y]=[]
-        for(var x=0;x<input.length - weights.length + 1; x++)
+        for(var x=0;x<input[0].length - weights[0].length + 1; x++)
         {        
             var o = bias;
             for(var j=0;j<weights.length;j++)

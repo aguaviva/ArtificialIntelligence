@@ -16,12 +16,12 @@ function GetMatrix(ll, kk,jj,ii )
     return out;
 }
 
-class Flatten
+class FlattenLayer
 {
     constructor(dimIni)
     {    
         this.dimIni = dimIni;
-        this.name ="Flatten";
+        this.name ="FlattenLayer";
     }
 
     forwardPass(input)

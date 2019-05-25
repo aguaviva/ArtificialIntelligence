@@ -306,7 +306,7 @@ function DebugResult(name, network, input, output, learningRate, expected)
 {
     Print(name)    
     
-    for(var i=0;i<4;i++)
+    for(var i=0;i<3;i++)
     {
         network[network.length-1].setValue(output);
         var nets = ForwardPropagation(network, input);
