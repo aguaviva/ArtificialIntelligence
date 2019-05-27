@@ -42,17 +42,13 @@ class CostQuadraticLayer
 
     backPropagation()
     {
-        var out = []
+        var out = TensorZero(this.diff.length, this.diff[0].length, this.diff[0][0].length, this.diff[0][0][0].length);        
         for(var l=0;l<this.diff.length;l++)
         {
-            out[l] = []
-            
             for(var k=0;k<this.diff[0].length;k++)
             {
-                out[l][k] = []
                 for(var j=0;j<this.diff[0][0].length;j++)
                 {
-                    out[l][k][j] = []
                     for(var i=0;i<this.diff[0][0][0].length;i++)                   
                     {    
                         out[l][k][j][i] = 2 * this.diff[l][k][j][i] 

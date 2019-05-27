@@ -1,21 +1,3 @@
-function GetMatrix(ll, kk,jj,ii )
-{
-    var out = []
-    for(var l=0;l<ll;l++)
-    {           
-        out[l]=[] 
-        for(var k=0;k<kk;k++)
-        {
-            out[l][k]=[] 
-            for(var j=0;j<jj;j++)        
-            {
-                out[l][k][j]=[] 
-            }
-        }        
-    }
-    return out;
-}
-
 class FlattenLayer
 {
     constructor(dimIni)
@@ -53,7 +35,7 @@ class FlattenLayer
 
         var i=0;
 
-        var fm = GetMatrix(this.input.length, this.input[0].length,this.input[0][0].length,this.input[0][0][0].length);
+        var fm = TensorZero(this.input.length, this.input[0].length,this.input[0][0].length,this.input[0][0][0].length);
         
         for(var z=0;z<this.input[0].length;z++)
         {
@@ -70,17 +52,5 @@ class FlattenLayer
         }
        
         return fm;
-    }
-
-    backpropInput(output, net)
-    {                
-        return output;
-    }
-
-    computeDeltas(layerDerivative)
-    {
-        this.deltas = [];
-    }
-
-    train(LearningRate) {};    
+    }  
 }

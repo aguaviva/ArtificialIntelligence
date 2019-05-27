@@ -16,14 +16,7 @@ function ForwardPropagation(network, input)
     var res = input
     for(var i=0;i<network.length;i++)
     {
-        try 
-        {
-            res = network[i].forwardPass(res);            
-        }
-        catch(err) {
-            Print( err.message + " at step: " + i + " " + network[i].name)
-            return 
-        }
+       res = network[i].forwardPass(res);            
     }
     
     return res;
@@ -62,41 +55,6 @@ function CalcError(network, input, output)
     }
     return totalErr;
 }
-
-function SimpleTrain(network, input, output, LearningRate, epocsCount, iters)
-{
-    var t0 = performance.now();
-    
-    for(var l=0;l<iters;l++)
-    {
-        for(var epocs=0;epocs<epocsCount;epocs++)
-        {
-            for(var i=0;i<input.length;i++)
-            {
-                network[network.length-1].setValue(output[i]);
-                
-                ForwardPropagation(network, input[i])
-                BackwardPropagation(network.getDerivative());
-                
-                ApplyDeltas(network, LearningRate);
-            }
-        }
-    
-        Print(CalcError(network, input, output).toFixed(4) + " : ");
-        Print("  cost"+network[network.length-1].name+network[network.length-1].o + " : ");
-        
-        /*
-        for(var i=0;i<input.length;i++)
-            Print(PrintMat(ForwardPropagation(network, input[i])));
-        */
-        Print("<br>");
-    }
-    
-    var t1 = performance.now();
-    Print("time: " + (t1 - t0) + " milliseconds.<br>");
-}
-
-
 
 //--------------------------------------------------------------------
 
@@ -285,11 +243,8 @@ function TestNetwork(network, input, output)
 
 function TestResult(name, network, input, output, learningRate, expected)
 {
-    Print(name)    
-    var out = " [";
     for(var i=0;i<3;i++)
     {
-        out += i+" "
         network[network.length-1].setValue(output);
         var nets = ForwardPropagation(network, input);
         //DumpWeights(network, input);
@@ -298,8 +253,10 @@ function TestResult(name, network, input, output, learningRate, expected)
     }
 
     var res = ForwardPropagation(network, input)
-    out += "] " + (res[0] - expected) + "/// " + expected + "</br>";        
-    Print(out)    
+    
+    var error = (res[0] - expected);
+    
+    return [name, error]
 }
 
 function DebugResult(name, network, input, output, learningRate, expected)

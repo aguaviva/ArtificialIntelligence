@@ -71,13 +71,4 @@ class MaxPool1D
         
         return fmout;                
     }
-
-    train(LearningRate) {};
-
-    
-    computeDeltas(layerDerivative)
-    {
-        this.deltas = [];
-    }
-    
 }

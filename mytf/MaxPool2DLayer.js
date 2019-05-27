@@ -92,12 +92,4 @@ class MaxPool2DLayer
         return fmout;                
     }
 
-    train(LearningRate) {};
-
-    
-    computeDeltas(layerDerivative)
-    {
-        this.deltas = [];
-    }
-    
 }

@@ -40,18 +40,7 @@ h1 { display:block; margin:20px auto; paddVing-bottom:20px; font:norm2al 24px/30
 
 //---------------------------------------------------------------------
 
-function assert(condition, message) 
-{
-    if (!condition) 
-    {
-        message = message || "Assertion failed";
-        if (typeof Error !== "undefined") 
-        {
-            throw new Error(message);
-        }
-        throw message; // Fallback
-    }
-}
+
 
 //----------------------------------------------------------------
 
@@ -130,7 +119,7 @@ function Train_Conv2D_TF_flatten(exec)
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("Train_Conv2D_TF_flatten", network, input, output, 0.01, 1.8559800165738582)
+    return exec("Train_Conv2D_TF_flatten", network, input, output, 0.01, 1.8559800165738582)
                                                                   
 }
 
@@ -227,7 +216,7 @@ function i1331_conv2d3311_o1331(exec)  //ok
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1331_conv2d3311_o1331 ", network, input, output, 0.01,  15.03912820346275047712)
+    return exec("i1331_conv2d3311_o1331 ", network, input, output, 0.01,  15.03912820346275047712)
 }
 
 function i1331_conv2D3311_conv2D3311_o1331(exec) // OK
@@ -286,7 +275,7 @@ function i1331_conv2D3311_conv2D3311_o1331(exec) // OK
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1331_conv2D3311_conv2D3311_o1331 ", network, input, output, 0.01, 16.56467818577763750909)
+    return exec("i1331_conv2D3311_conv2D3311_o1331 ", network, input, output, 0.01, 16.56467818577763750909)
 }
 
 function i1332_conv2D3321_o1331(exec) //OK
@@ -343,7 +332,7 @@ function i1332_conv2D3321_o1331(exec) //OK
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1332_conv2D3321_o1331 ", network, input, output, 0.01, 2.133445775792389)
+    return exec("i1332_conv2D3321_o1331 ", network, input, output, 0.01, 2.133445775792389)
 }
 
 function i1331_conv2d3312_o1332(exec) //OK
@@ -401,7 +390,7 @@ function i1331_conv2d3312_o1332(exec) //OK
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1331_conv2d3312_o1332 ", network, input, output, 0.01, 17.17946415104465)
+    return exec("i1331_conv2d3312_o1332 ", network, input, output, 0.01, 17.17946415104465)
 }
 
 function i1332_conv2D3322_o1332(exec) //ok
@@ -477,7 +466,7 @@ function i1332_conv2D3322_o1332(exec) //ok
     network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1332_conv2D3322_o1332  ", network, input, output, 0.01, 4.137594950310169)
+    return exec("i1332_conv2D3322_o1332  ", network, input, output, 0.01, 4.137594950310169)
 }
 
 function i1331_conv2D3312_conv2D3321_i1331(exec) //OK
@@ -549,7 +538,7 @@ function i1331_conv2D3312_conv2D3321_i1331(exec) //OK
     //network.push(new ActivationSigmoidLayer());
     network.push(new CostQuadraticLayer());
 
-    exec("i1331_conv2D3312_conv2D3321_i1331 ", network, input, output, 0.01, 0.11052561596880975)
+    return exec("i1331_conv2D3312_conv2D3321_i1331 ", network, input, output, 0.01, 0.11052561596880975)
 }
 
 
@@ -655,7 +644,7 @@ function i1332_conv2D3322_conv2D3322_i1332(exec) //TBD
     network.push(new Conv2DLayer(weights2, bias2));
     network.push(new CostQuadraticLayer());
     
-    exec("i1332_conv2D3322_conv2D3322_i1332 ", network, input, output, 0.01, 1.3998274670247712)
+    return exec("i1332_conv2D3322_conv2D3322_i1332 ", network, input, output, 0.01, 1.3998274670247712)
 }
 
 function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
@@ -735,7 +724,7 @@ function Train_Conv2D_LY_1_3x4_FM_22_TF(exec) //WIP
     network.push(new Conv2DLayer(weights, bias));
     network.push(new CostQuadraticLayer());
     
-    exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.01, 1.0946335)
+    return exec("Train_Conv2D_LY_1_3x4_FM_22_TF", network, input, output, 0.01, 1.0946335)
 }
 
 function MNIST_conv_TF(exec)
@@ -1095,27 +1084,54 @@ function MNIST_conv_TF(exec)
     network.push(new ActivationReluLayer());       
     network.push(new CostQuadraticLayer());        
 
-    exec("MNIST_conv_TF", network, input, output, 0.000001, 548.5579833984)
+    return exec("MNIST_conv_TF", network, input, output, 0.000001, 548.5579833984)
 }
 
 function regressionTestsGood()
-{    
-    i1331_conv2d3311_o1331(TestResult); //ok 64b        
-    i1331_conv2D3311_conv2D3311_o1331(TestResult);  //ok 64b
-    i1331_conv2d3312_o1332(TestResult);  //ok 64b
-    i1332_conv2D3321_o1331(TestResult); 
-    i1332_conv2D3322_o1332(TestResult); 
-    i1332_conv2D3322_conv2D3322_i1332(TestResult);
-    i1331_conv2D3312_conv2D3321_i1331(TestResult);        
-    Train_Conv2D_TF_flatten(TestResult); //ok 64b         
-    Train_Conv2D_LY_1_3x4_FM_22_TF(TestResult); 
-    MNIST_conv_TF(TestResult);
+{   
+    var tests = 
+    [
+        i1331_conv2d3311_o1331,
+        i1331_conv2D3311_conv2D3311_o1331,
+        i1331_conv2d3312_o1332,
+        i1332_conv2D3321_o1331,
+        i1332_conv2D3322_o1332,
+        i1332_conv2D3322_conv2D3322_i1332,
+        i1331_conv2D3312_conv2D3321_i1331,
+        Train_Conv2D_TF_flatten,
+        Train_Conv2D_LY_1_3x4_FM_22_TF,
+        MNIST_conv_TF
+    ]
+
+    var out = "<table>"
+    
+    for(var i=0;i<tests.length;i++)
+    {
+        out += "<tr>";
+
+        try
+        {
+            var res = tests[i](TestResult);
+            
+            out += "<td><pre>"+res[0]+"</pre></td>";
+            out += "<td><pre>"+res[1]+"</pre></td>";
+        }
+        catch(err) 
+        {
+            Print( "<td><pre>" + err.message + "</pre></td>")
+        }
+        
+        out += "</tr>";        
+    }
+    
+    out += "</table>"
+    Print (out)
 }
 
 function regressionTestsBad()
 {   
     //Train_pool(DebugResult)
-    Train_pool(DebugResult);
+    //Train_pool(DebugResult);
 }
 
 function init()
@@ -1131,10 +1147,12 @@ function init()
 
 <body onload="init()">
 <h1>Conv Nets test suite</h1>
+
+Test suite results, trains the NN 3 times and compares the result with tensorflow results
+
 <div id="container">
 <div id="text" ></div>
-Let's consider a simple conv network an
-d lets compute how to do back propagation on it. </br>
+</br>
 </br>
 <h2>Contact/Questions:</h2>
  &lt;my_github_account_username&gt;$@gmail.com$.
