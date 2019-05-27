@@ -3,8 +3,8 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <title>Neural network back prop, with matrix fomulation</title>
-<script type="text/javascript"
-  src="http://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML">
+<script type="text/javascript" async
+  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?...">
 </script>
 <script type="text/x-mathjax-config">
   MathJax.Hub.Config({tex2jax: {inlineMath: [['$','$'], ['\\(','\\)']]}});
@@ -20,120 +20,28 @@ h1 { display:block; width:600px; margin:20px auto; paddVing-bottom:20px; font:no
 #nav li a { color:#000; display:block; text-decoration:none; width:100%; height:100%; }
 -->
 </style>
+<script type="text/javascript" src="Matrix.js"></script>
+<script type="text/javascript" src="InputLayer.js"></script>
+<script type="text/javascript" src="ConvHelpers.js"></script>
+<script type="text/javascript" src="Conv1DLayer.js"></script>
+<script type="text/javascript" src="Conv2DLayer.js"></script>
+<script type="text/javascript" src="Conv3DLayer.js"></script>
+<script type="text/javascript" src="RegDropoutLayer.js"></script>
+<script type="text/javascript" src="ActivationSigmoidLayer.js"></script>
+<script type="text/javascript" src="ActivationReluLayer.js"></script>
+<script type="text/javascript" src="FlattenLayer.js"></script>
+<script type="text/javascript" src="MaxPool1DLayer.js"></script>
+<script type="text/javascript" src="MaxPool2DLayer.js"></script>
+<script type="text/javascript" src="AveragePool1DLayer.js"></script>
+<script type="text/javascript" src="AveragePool2DLayer.js"></script>
+<script type="text/javascript" src="CostQuadraticLayer.js"></script>
+<script type="text/javascript" src="CostCrossEntropyLayer.js"></script>
+<script type="text/javascript" src="FullyConnectedLayer.js"></script>
+<script type="text/javascript" src="ArgMaxLayer.js"></script>
+<script type="text/javascript" src="Network.js"></script>
 </head>
 <script>
 
-function RandomMat(inp,neurons)
-{
-    var L = []
-    for(var i=0;i<neurons;i++)
-    {
-        L[i] = [];
-        for(var j=0;j<inp;j++)
-        {
-            L[i].push((2*Math.random()-1)*.3);
-        }
-    }
-    return L;
-}
-
-function PrintMat(m)
-{
-
-    var str = "[";
-    for(var j=0;j<m.length;j++)
-    {
-        str += "[" + m[j].join(",") + "]";
-    }
-    str += "]";
-    return str;
-}
-
-function MulMat(m1, m2)
-{
-    var O = [];        
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m2[0].length;i++)        
-        {
-            var tmp=0;
-            for(var k=0;k<m1[0].length;k++)
-            {
-                tmp += (m1[j][k] * m2[k][i]);
-            }
-            O[j].push( tmp);
-        }
-    }
-    return O;  
-}
-
-
-function TransposeMat(m)
-{
-    var O = [];        
-    for(var j=0;j<m[0].length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m.length;i++)        
-        {
-            O[j][i] = m[i][j];
-        }
-    }
-    return O;
-}
-
-function AddMat(m1, m2)
-{
-    var O = [];        
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
-        {
-            O[j][i] = m1[j][i] + m2[j][i];
-        }
-    }
-    return O;
-}
-
-function SimpleMulMat(m1, m2)
-{
-    var O = [];        
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
-        {
-            O[j][i] = m1[j][i] * m2[j][i];
-        }
-    }
-    return O;
-}
-
-
-function SubMat(m1, m2)
-{
-    var O = [];        
-    for(var j=0;j<m1.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m1[0].length;i++)        
-        {
-            O[j][i] = m1[j][i] - m2[j][i];
-        }
-    }
-    return O;
-}
-/*
-cvs = document.getElementById(name);
-ctx = cvs.getContext('2d');
-canvasData = ctx.getImageData(0, 0, cvs.width, cvs.height);    
-for(var i=0;i<100*100;i++)
-{
-}
-ctx.putImageData(canvasData, 0, 0);    
-*/
 class ScoreBoard
 {                
     constructor(name)
@@ -166,40 +74,54 @@ class ScoreBoard
             {
                 var p = ((dx+x) + (dy+y) * this.cvs.width)*4;
                 var b = input[x + y*28]*255;
-                this.canvasData.data[ p + 0 ] = 255-b
-                this.canvasData.data[ p + 1 ] = 255-b;
-                this.canvasData.data[ p + 2 ] = 255-b;
+                this.canvasData.data[ p + 0 ] = b
+                this.canvasData.data[ p + 1 ] = b;
+                this.canvasData.data[ p + 2 ] = b;
                 this.canvasData.data[ p + 3 ] = 128;
             }
         }            
     }
     
-    Print(text, x, y)
+    Print(text, x, y, color)
     {
         this.ctx.fillStyle = "black";
         this.ctx.font = "15px Arial";
         this.ctx.fillText(text, x, y);        
-    }
+    }   
     
-    
-    Draw(numbers, labels)
+    Draw(numbers, labels, results, offset)
     {
         this.clear();
 
         this.BeginDrawNumbers();
         for (var i=0;i<15*8;i++)
         {
-            var x = i % 15;
-            var y = Math.floor(i / 15);
-            this.DrawNumbers(numbers[i], x*40, y*40)
+            var x = (i % 15)*40;
+            var y = (Math.floor(i / 15))*40;
+            this.DrawNumbers(numbers[offset + i], x, y)
         }
         this.EndDrawNumbers()
 
+        this.ctx.beginPath();
+        this.ctx.strokeStyle = "red";
         for (var i=0;i<15*8;i++)
         {
-            var x = i % 15;
-            var y = Math.floor(i / 15);
-            this.Print(labels[i], x*40+28, y*40+28)
+            if (labels[offset+i] != results[offset+i])
+            {                
+                var x = (i % 15)*40;
+                var y = (Math.floor(i / 15))*40;
+                
+                this.ctx.rect(x, y, 28, 28);
+            }
+        }
+        this.ctx.stroke();
+
+        for (var i=0;i<15*8;i++)
+        {
+            var x = (i % 15)*40;
+            var y = (Math.floor(i / 15))*40;
+                        
+            this.Print(results[offset+i], x+28, y+28)
         }
 
     }    
@@ -253,83 +175,9 @@ class Graph
     }
 }
 
-function Sig(x)
-{
-    return 1.0/(1.0+Math.exp(-x));
-}
-
-function DerSig(x)
-{
-    return Act(x)*(1-Act(x));
-}
-
-function Relu(x)
-{
-    return x<0?0:x; 
-}
-
-function DerRelu(x)
-{
-    return x>0?1:0;  
-}
-
-Act = Sig;
-DerAct = DerSig;
-
-function funcMat(func, m )
-{
-    var O = [];        
-    for(var j=0;j<m.length;j++)
-    {
-        O[j]=[];
-        for(var i=0;i<m[0].length;i++)        
-        {
-            O[j][i] = func(m[j][i]);
-        }
-    }
-    return O;
-}
-
-function UpdateWeights(m1,m2, learningRate)
-{
-    for(var i=0;i<m1.length;i++)
-    {
-        for(var j=0;j<m1[0].length;j++)
-        {
-            m1[i][j] += learningRate * m2[i][j];
-        }
-    }
-}
-
 //-------------------------------
 
-
-// this helps taking care of the bias
-// this helps taking care of the bias by adding a 1 at the end of the vector
-function AddBiasOneT(vin)
-{
-    var vout = [].concat(vin);    
-    vout.push( Array(vout[0].length).fill(1) );
-    return vout;   
-}
-
-function GetMaxElement(vector)
-{
-    var elem = -1;
-    var max = -1;
-    for(var i=0;i<vector.length;i++)
-    {
-        if (vector[i]>max)
-        {
-            max = vector[i];
-            elem = i;
-        }
-    }
-    return elem;
-}
-
-var wl_i1 = RandomMat(784+1,15);  //read from 3, ilayer is 4, the +1 is because of the bias
-var wl_12 = RandomMat(15+1,10);
+var network = []
 
 var inputs = [];
 var outputs = [];
@@ -345,8 +193,62 @@ var graph = null;
 var iterations = 0;
 var oldFitness=1000;
 var curFitness=1000;
-var learningRate = 3;
+var learningRate = 1;
 var BatchSize = 100;
+
+function vectorFromIdx(i)
+{
+    var v = Array(10).fill(0);
+    v[i] = 1;
+    return [[[v]]];
+}
+
+function getMaxIdxInVector(vv)
+{
+    var v = vv[0][0][0]
+    var max = -Infinity;
+    var idx = -1;
+    for(var j=0;j<v.length;j++)
+    {
+        if (v[j]>max)
+        {
+            max = v[j];
+            idx = j;
+        }
+    }
+    return idx;
+}
+
+function iterate2(inputs, labels, results, offset, size, training)
+{   
+    var totalErr = 0;
+    var correct = 0;
+
+    for(var j=offset;j<offset+ size;j++)
+    {
+        network[network.length-1].setValue(vectorFromIdx(labels[j]));
+        
+        var err = ForwardPropagation(network, [[[inputs[j]]]])[0][0][0][0];
+        
+        if (err < 0.1)
+            correct++;        
+                
+        // store result from the network        
+        var outputLayer = network[network.length-2];                
+        res = outputLayer.forwardPass(outputLayer.input);
+        results[j] = getMaxIdxInVector(res)
+        
+        if (training)
+        {
+            BackwardPropagation(network);        
+            ApplyDeltas(network, learningRate);    
+        }
+        
+        totalErr += err * err;
+    }    
+    
+    return {correct: correct, totalErr: totalErr / size};
+}
 
 function iterate()
 {
@@ -354,84 +256,39 @@ function iterate()
         return;
         
     iterations++;
-    
-    var totalErr = 0;
-    var correct = 0;
-    
-    for(var j=0;j<inputs.length;j+=BatchSize)
+
+    // draw score boards
     {
-        //forward pass
-        //            
-        var o0   = AddBiasOneT(TransposeMat(inputs.slice(j,j+BatchSize)));
-        var net1 = MulMat(wl_i1, o0);
-        var o1   = AddBiasOneT(funcMat(Act, net1));
-        var net2 = MulMat(wl_12, o1); 
-        var o2   = funcMat(Act, net2);
-
-        var err = SubMat(o2, TransposeMat(outputs.slice(j,j+BatchSize)));
-        
-        var o = TransposeMat(o2)
-        for(var i=0;i<o.length;i++)
-        {
-            var res = GetMaxElement(o[i]);
-            if ( res == labels[j+i])
-                correct++;        
-                
-            results[j+i] = res;
-        }
-        
-        //back propagate
-        //
-        
-        // outer layer
-        var sp2  =  SimpleMulMat(funcMat(DerAct, net2), err);      
-        var e2   = MulMat(sp2, TransposeMat(o1));
-        
-        // inner layer
-        var wsp2   = MulMat(TransposeMat(wl_12), sp2);
-        var sp1  =  SimpleMulMat(funcMat(DerAct, net1), wsp2);                  
-        var e1   = MulMat(sp1, TransposeMat(o0));
-        
-        //update weights
-        UpdateWeights(wl_12, e2, -learningRate/BatchSize);           
-        UpdateWeights(wl_i1, e1, -learningRate/BatchSize);        
-        
-        totalErr += MulMat( err, TransposeMat(err))[0][0];        
-    }    
-    
-    graph.AddPoint(totalErr);
-    trainingSetScoreBoard.Draw(inputs, results);
-
-    document.getElementById("trainingText").innerHTML = "Iterations:" + iterations + " <br> "
-    document.getElementById("trainingText").innerHTML += "Num items: " + inputs.length + "<br>Correct: " + correct + " ("+ (correct*100/inputs.length).toFixed(2) +"% )<br>Error: " + totalErr + " <br> "
-
-        
-    if (testSet.length>0)
-    {
-        var vec = testSet.slice(0,0+400);
-        var o0   = AddBiasOneT(TransposeMat(vec));
-        var net1 = MulMat(wl_i1, o0);
-        var o1   = AddBiasOneT(funcMat(Act, net1));
-        var net2 = MulMat(wl_12, o1); 
-        var o2   = funcMat(Act, net2);
-        var o = TransposeMat(o2)
-
-        correct = 0;
-        for(var i=0;i<o.length;i++)
-        {
-            var res = GetMaxElement(o[i]);
-            if ( res == labels[2*3000+i])
-                correct++;        
-                
-            results[i] = res;
-        }
-
-        testSetScoreBoard.Draw(testSet, results);
-        document.getElementById("testText").innerHTML = "Num items: " + vec.length + "<br>Correct: " + correct + " ("+ (correct*100/vec.length).toFixed(2) +"% )";
-        
+        trainingSetScoreBoard.Draw(inputs, labels, results, 0);
+        testSetScoreBoard.Draw(inputs, labels, results, 2500);
     }
-    
-    
+
+    // train
+    { 
+        var offset = 0;
+        var len = 2500;
+        
+        var t0 = performance.now();
+        
+        var res = iterate2(inputs, labels, results, offset, len, true);
+
+        var t1 = performance.now();
+        var milliseconds = (t1 - t0);
+        
+        graph.AddPoint(res.totalErr * 100);
+
+        document.getElementById("trainingText").innerHTML = "Epocs:" + iterations + " <br> Epocs/sec: " + ((len * 1000) / milliseconds).toFixed(1) + "<br>"
+        document.getElementById("trainingText").innerHTML += "Num items: " + len + "<br>Correct: " + res.correct + " ("+ (res.correct*100/len).toFixed(2) +"% )<br>Error: " + res.totalErr + " <br> ";
+    }
+        
+    // test    
+    {   
+        var offset = 2500; 
+        var len = 500;
+        var res = iterate2(inputs, labels, results, offset, len, false);    
+        
+        document.getElementById("testText").innerHTML = "Num items: " + len + "<br>Correct: " + res.correct + " ("+ (res.correct*100/len).toFixed(2) +"% )<br>Error: " + res.totalErr + " <br> ";        
+    }
 }
 
 function getImageData(img) 
@@ -465,7 +322,7 @@ function LoadImage(file, list)
             list.push(num);
         }
     }
-    img.src = "https://raw.githubusercontent.com/aguaviva/ArtificialIntelligence/master/" + file;
+    img.src = file;
 }
 
 
@@ -473,33 +330,39 @@ function GetMnistInputs(numbers)
 {
     for(var i=0;i<1;i++)
     {
-        LoadImage("mnist/mnist_batch_"+i+".png", numbers);
+        //LoadImage("mnist/mnist_batch_"+i+".png", numbers);
+        LoadImage("/mnist_batch_"+i+".png", numbers);
     }       
 }
 
-
-function GetMnistOutputs(out)
-{      
-    for(var i=0;i<labels.length;i++)
-    {
-        var e= Array(10).fill(0);
-        e[labels[i]]=1.0;
-        out.push(e);
-    }
-    return out;
-}
-
 function init()
-{
-    setInterval(iterate,10); 
-    
+{   
     GetMnistInputs(inputs);
-    GetMnistOutputs(outputs);
-    LoadImage("mnist/mnist_batch_2.png", testSet);
     
     trainingSetScoreBoard = new ScoreBoard("trainingSetScoreBoard");
     testSetScoreBoard = new ScoreBoard("testSetScoreBoard");
     graph = new Graph("myCanvas");
+    
+
+    var weights1 = [[RandomMat(15,784)]];  //read from 3, ilayer is 4, the +1 is because of the bias
+    var bias1 = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+    
+    var weights2 = [[RandomMat(10, 15)]];
+    var bias2 = [0,0,0,0,0,0,0,0,0,0];
+        
+    network.push(new InputLayer());
+    network.push(new FullyConnectedLayer(weights1, bias1));
+    network.push(new ActivationSigmoidLayer());
+    network.push(new FullyConnectedLayer(weights2, bias2));
+    network.push(new ActivationSigmoidLayer());
+    //network.push(new ArgMaxLayer());   
+    //network.push(new CostCrossEntropyLayer());
+    network.push(new CostQuadraticLayer());
+    
+
+    setInterval(iterate,10); 
+
+    
 }
 </script>
 
