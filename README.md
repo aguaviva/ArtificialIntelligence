@@ -1,30 +1,20 @@
 # ArtificialIntelligence
 
-Tensorflow in javascript, all written from first principles as an exercise to learn NN. 
+Experimenting with AI (Just some notes for me and my friends regarding AI.)
 
-All started with me one day writing a 2x2 NN and somehow I ended up writing a lib that generates the same results as tensorflow in the forward and in the backprop passes.
+### Demos:
+1. [Simple Linear Regression](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/SimpleLinearRegression.html)
+2. [Simple Linear Classification (1 neuron)](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/SimpleLinearClassification.html)
+3. [Neural Network with a hidden layer using matrix formualtion, solving a xor](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatrices.html)
+4. [Same as above but now all the layers implement a bias](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatricesAndBias.html)
+5. [Same as 4 but generalized to support other training sets](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/GenericDistRegression.html)
+5. [Adding minibatch to #4](http://htmlpreview.github.io/?https://github.com/aguaviva/ArtificialIntelligence/blob/master/NeuralNetworkBackPropWithMatricesAndBiasMiniBatch.html)
+6. [MNIST Hand written recognition, net structure: 784x15x10](http://aguaviva.github.io/ai/MnistNonConv.html)
+7. [OO library that implements a 1D conv, a maxpool and a fully connected layer](http://aguaviva.github.io/ai/NeuralNetworkBackPropWithMatricesAndBiasConv.html)
 
-## Features
-
-It supports the following layers:
-
--  NN
-   - Convolutional 1D & 2D Layers  
-   - Fully connected layer  
--  Activation layers
-   -  Sigmoid
-   -  Relu
--  Pool layers
-   -  Max pool
-   -  Average pool   
--  Regularization
-   - Dropout 1D & 2D
--  Cost layers
-   - Quadratic error
-   - Cross entropy (needs arg max)
--  Misc 
-   - flatten layer
-
+### To do:
+1. Make the samples more beautiful
+2. Learn more/keep adding demos
 
 
 
